@@ -3,6 +3,9 @@
 """
 Created on Thu Jan 28 20:26:24 2021
 
+Class file to handle GMI L1C and L1B data
+can read in one file or multiple files at one time.
+
 @author: inderpreet
 """
 
@@ -11,8 +14,11 @@ import xarray
 import re
 import os
 import glob
-from datetime import datetime
-from iwc2tb.common.plot_locations_map import plot_locations_map
+from datetime import datetime, timedelta
+#rom iwc2tb.common.plot_locations_map import plot_locations_map
+from typhon.topography import SRTM30
+from iwc2tb.GMI.expand_lon import expand_lon
+from iwc2tb.GMI.interpolator import interpolator
 
 class GMI_Sat():
     
@@ -23,57 +29,127 @@ class GMI_Sat():
 #            print ('doing only one file')
             filenames = [filenames]
         self.files = filenames    
+        
+        self.level = os.path.basename(self.files[0])[0:2]
             
         # get all corresponding GPROF files:
-        gprofiles      = self.get_gprofiles()    
+        gprofiles      = self.get_gprofiles()   
         self.gprofiles = gprofiles
         
         ix = np.where(np.array(gprofiles, copy=False) != "noobs_file")[0]
-        print (ix)
-
-        dataset = xarray.open_dataset(filenames[ix[0]], group = "S2")
-    
+        
+        if len(ix) == 0:
+            raise Exception("Check another file, GPROF unavailable")
+            
+        # open first file to initialise
+        dataset = xarray.open_dataset(filenames[ix[0]], group = "S2") 
+        sctime0  = xarray.open_dataset(filenames[ix[0]], group = "S2/ScanTime")
+        
         lat0    = dataset["Latitude"]
         lon0    = dataset["Longitude"]
-        tb0     = dataset["Tb"]
-    
+        
+        if self.level == "1C":
+            var = "Tc"
+        if self.level == "1B"     :
+            var = "Tb"
+            
+        tb0     = dataset[var]     
         dataset.close()
         
+        # corresponding GPROF dataset
         dataset               = xarray.open_dataset(self.gprofiles[ix[0]], group = "S1")
         self.gprof_parameters = list(dataset.keys())
         dataset.close()
         
         
+        # loop over all input GMI files if len(gmifiles) > 1
         if len(filenames) != 1:       
 
             for i in ix[1:]:
                 filename = filenames[i]
-
-                print (i)
             
                 dataset = xarray.open_dataset(filename, group = "S2")
         
                 lat    = dataset["Latitude"]
                 lon    = dataset["Longitude"]
-                tb     = dataset["Tb"]
+                tb     = dataset[var]    
+                sctime = xarray.open_dataset(filename, group = "S2/ScanTime")
                 
-                lat0 = xarray.concat([lat0, lat], dim = "phony_dim_40")
-                lon0 = xarray.concat([lon0, lon], dim = "phony_dim_40")
-                tb0  = xarray.concat([tb0, tb], dim = "phony_dim_40") 
-            
-            # lat0 = xarray.concat([lat0, lat], dim = "phony_dim_8")
-            # lon0 = xarray.concat([lon0, lon], dim = "phony_dim_8")
-            # tb0  = xarray.concat([tb0, tb], dim = "phony_dim_8") 
-                
+                if self.level == "1B":
+                    lat0    = xarray.concat([lat0, lat], dim = "phony_dim_40")
+                    lon0    = xarray.concat([lon0, lon], dim = "phony_dim_40")
+                    tb0     = xarray.concat([tb0, tb], dim = "phony_dim_40") 
+                    sctime0 = xarray.concat([sctime0, sctime], dim = "phony_dim_23")
+                if self.level == "1C":
+                    lat0    = xarray.concat([lat0, lat], dim = "phony_dim_8")
+                    lon0    = xarray.concat([lon0, lon], dim = "phony_dim_8")
+                    tb0     = xarray.concat([tb0, tb], dim = "phony_dim_8")
+                    sctime0 = xarray.concat([sctime0, sctime], dim = "phony_dim_6")
+                    
+                    
                 
        
         self.lat = lat0.values
         self.lon = lon0.values
+        self.sctime = sctime0
+        
+        sctime0.close()
+        # tbs are in order GMI channels 10, 11, 12, 13
         self.tb  = tb0.values 
 
+        self.time = self.get_pixtime()
         dataset.close()        
         
+    
+    def get_pixtime(self):
         
+
+        year    = self.sctime["Year"].data
+        mon     = self.sctime["Month"].data
+        day     = self.sctime["DayOfMonth"].data.astype('timedelta64[D]').astype(np.int32)
+        hour    = self.sctime["Hour"].data.astype('timedelta64[h]').astype(np.int32)
+        minute  = self.sctime["Minute"].data.astype('timedelta64[m]').astype(np.int32)
+        sec     = self.sctime["Second"].data.astype('timedelta64[s]').astype(np.int32)
+        
+        date    = [datetime(year[i], mon[i], day[i], hour[i], minute[i], sec[i]) for i in range(len(year))]
+        
+        return np.array(date)
+        
+    @property
+    def lst(self):
+        
+        t    = self.time.reshape(-1, 1)
+        t  = np.tile(t, self.lon.shape[1])
+        mins = self.lon * 4.0
+        
+        lst = t.copy()
+        nx = self.lon.shape[0]
+        ny = self.lat.shape[1]
+        lst = [[t[i, j] + timedelta(minutes = np.float(mins[i, j])) for i in range(nx)] for j in range(ny)]
+        
+        return np.stack(lst).T
+        
+    @property
+    def t0(self):
+        t0 = self.get_gprofdata("temp2mIndex")
+        return t0
+
+    @property
+    def iwp(self):
+        iwp = self.get_gprofdata("iceWaterPath")
+        return iwp
+
+    @property
+    def rwp(self):
+        iwp = self.get_gprofdata("rainWaterPath")
+        return iwp        
+    
+    @property
+    def wvp(self):
+        wvp = self.get_gprofdata("totalColumnWaterVaporIndex")
+        return wvp     
+    
+    
     def get_keys(self) :
         """
         get SDS keys
@@ -110,26 +186,29 @@ class GMI_Sat():
                 
         for file in self.files:
                 
-            # get date
-            #m = re.search('-C.(.+?)-S', file)
-            m = re.search('TB2016.(.+?)-S', file)
-            date = datetime.strptime(m.group(1) , "%Y%m%d")
-            
-            # get date and time string
-            #m = re.search('-C.(.+?)-E', file)
-            m = re.search('-S(.+?)-E', file)
+            if self.level == "1B":
+                m  = re.search('TB2016.(.+?)-S', file)
+                m1 = re.search('-S(.+?)-E', file)
 
+            if self.level == "1C":
+                m  = re.search('XCAL2016-C.(.+?)-S', file)
+                m1 = re.search('-S.(.+?)-E', file)
+
+            
+            date = datetime.strptime(m.group(1) , "%Y%m%d")
             
             try:
                 gproffile = glob.glob(os.path.join(gprofpath, 
                                                str(date.strftime("%Y")),
                                                str(date.strftime("%m")),
                                                '*' + date.strftime("%Y%m%d") + '-S' +
-                                               '*' + m.group(1)+ '*'))
+                                               '*' + m1.group(1)+ '*'))
+                
+
                 gprofiles.append(gproffile[0])
 
             except:
-                print ("GPROF data not availble for %s", file) 
+                print ("GPROF data not availble for ", file) 
                 gprofiles.append("noobs_file")
             
         return gprofiles     
@@ -147,7 +226,6 @@ class GMI_Sat():
         if len(self.gprofiles) > 1:              
            ix = 0
            for ix in idx[1:]:
-               print (ix)
                gprofile = self.gprofiles[ix]
                
 
@@ -178,7 +256,6 @@ class GMI_Sat():
             if len(self.gprofiles) > 1:              
                ix = 0
                for ix in idx[1:]:
-                   print (ix)
                    gprofile = self.gprofiles[ix]
                    
     
@@ -195,14 +272,42 @@ class GMI_Sat():
         else:
             raise Exception("Parameter should be one of  ", self.gprof_parameters)
     
+    @property
+    def z0(self):
+        
+        era      = xarray.open_dataset("orography.nc") 
+        # flip latitude to be in ascending order        
+        era      = era.sortby('latitude' , ascending = True) 
+             
+        glat     = era['latitude'].data
+        glon     = era['longitude'].data     
+        field    = era['z'].data[0]
+        glon, field = expand_lon(glon, field) 
+        
+        my_interpolating_function = (interpolator((glat, glon), field, 
+                                                  method= "linear"))  
+        
+        
+        lat = self.lat.ravel()
+        lon = self.lon.ravel()%360
+        
+        pts = [[lat[j], lon[j]] for j in range(len(lat))]     
+        grid_z = my_interpolating_function(pts)
+        
     
-    def plot_scene(self, z = None):        
-        """
-        plots the overpass of DARDAR
+        
+        s1 = np.sin(lat/180*np.pi);
+        s2 = np.sin(2*lat/180*np.pi);
 
-        Returns
-        -------
-        None.
+        gE  = 9.780327 * (1 + 5.3024e-3 * s1**2 - 5.8e-6*s2**2)
+        
+            
+        rE  = 6378137./(1.006803-0.006706*s1**2)
+        
+        grid_z = rE*( gE*rE / ( gE*rE - grid_z ) -1 )
+        
+        grid_z = grid_z.reshape(self.lat.shape)
 
-        """
-        plot_locations_map(self.lat, self.lon, z)
+        
+        return grid_z
+        

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+    #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Fri Feb 19 21:26:04 2021
@@ -42,7 +42,8 @@ def to_dataarray(gmi):
     ta.attrs["t0"]    = gmi.t0
     ta.attrs["p0"]    = gmi.p0
     ta.attrs["z0"]    = gmi.z0   
-    
+    ta.attrs["t2m"]   = gmi.t2m
+    ta.attrs["skt"]   = gmi.skt
     return ta
 
 #%%
@@ -61,22 +62,45 @@ def to_dataarray_satdata(gmi):
     """
     
     ta = gmi.tb.reshape(-1, 4)
+    
+    mask = np.isnan(ta[:, 0])
+    mask = ~mask
+   
+    temp = np.zeros(ta[mask, :].shape)
+    
+    temp[:, 1] = ta[mask, 1]
+    temp[:, 0] = ta[mask, 0]
+    temp[:, 2] = ta[mask, 3]
+    temp[:, 3] = ta[mask, 2]
+    
+    ta = temp.copy()
+        
+    
     cases = np.arange(0, ta.shape[0], 1)
 
     channels =   ["166.5V", "166.5H", "183+-3", "183+-7"]
     lsm = gmi.get_lsm().ravel()
     stype = lsm_gmi2arts(lsm)
 
-    ta = xarray.DataArray(ta, coords = [cases, channels], dims = ['cases', 'channels'], name = 'ta')
-    ta.attrs['stype']   = stype
-    ta.attrs['lon']   = gmi.lon.ravel()
-    ta.attrs['lat']   = gmi.lat.ravel()
-    ta.attrs['iwp']   = gmi.get_gprofdata("iceWaterPath").ravel()
-    #ta.attrs['wvp']  = gmi.get_gprofdata("")
-    ta.attrs["rwp"]   = gmi.get_gprofdata("rainWaterPath").ravel()
-    ta.attrs["t0"]    = gmi.get_gprofdata("temp2mIndex").ravel()
-    #ta.attrs["p0"]   = gmi.p0
-    #ta.attrs["z0"]   = gmi.z0   
+    ta = xarray.DataArray(ta[mask], coords = [cases, channels], 
+                          dims = ['cases', 'channels'], name = 'ta')
+    
+    ta.attrs['stype']   = stype[mask]
+    ta.attrs['lon']   = gmi.lon.ravel()[mask]
+    ta.attrs['lat']   = gmi.lat.ravel()[mask]
+    ta.attrs['iwp']   = gmi.iwp.ravel()[mask]
+    ta.attrs["rwp"]   = gmi.rwp.ravel()[mask]
+    ta.attrs["t2m"]   = gmi.t0.ravel()[mask]
+    ta.attrs["wvp"]   = gmi.wvp.ravel()[mask]
+    
+    
+    lst = gmi.lst.ravel()[mask]
+    
+    lst = [lst[i].strftime('%Y%m%d%H%M') for i in range(lst.shape[0])] 
+    
+    lst = np.stack(lst).T
+    ta.attrs['lst']  = lst
+    
     
     return ta 
 
@@ -125,41 +149,4 @@ def divide_test_train(TB, randomList):
         
     return TB_test    
 
-#%%
-if __name__ == "__main__":
     
-    inpath    =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/test/test_f07')  
-    inpath1   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/test/test1.2') 
- 
-     
-    matfiles  = glob.glob(os.path.join(inpath, "2010_*.mat"))
-    matfiles1 = glob.glob(os.path.join(inpath1, "2010_*.mat"))
-    
-    matfiles += matfiles1
-    
-    gmi       = GMI(matfiles)
-#%%    
-    ta        = to_dataarray(gmi)
-    cases     = ta.cases.values 
-    
-    randomList = random.sample(range(0, len(cases)), len(cases))
-    lim       = int(len(cases) * 0.32)
-    
-#%%    
-    ta_test = divide_test_train(ta, randomList[:lim])
-    ta_test.to_netcdf('TB_GMI_test.nc', 'w')
-    
-    ta_train = divide_test_train(ta, randomList[lim:])
-    ta_train.to_netcdf('TB_GMI_train.nc', 'w')
-    
-#%%
-    inpath   = os.path.expanduser('~/Dendrite/SatData/GMI/L1B/2019/01/')
-    #inpath   = os.path.expanduser('~/Dendrite/SatData/GMI/L1B/2019/06/')
-    gmifiles = glob.glob(os.path.join(inpath, "*/*20190124-S125318*.HDF5"))
-
-    gmi_s    = GMI_Sat(gmifiles)
-#%%    
-    ta_s        = to_dataarray_satdata(gmi_s)
-    cases     = ta.cases.values 
-
-    ta_s.to_netcdf('TB_GMI_test_satdata.nc', 'w')
