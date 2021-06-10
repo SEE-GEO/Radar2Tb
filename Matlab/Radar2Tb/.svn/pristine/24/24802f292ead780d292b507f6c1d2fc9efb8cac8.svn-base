@@ -1,0 +1,71 @@
+% FORMAT set_surf_fastem(P)
+%
+% IN    P   Path structure
+%
+% This functions make use of
+%     skt.xml
+%     wind_speed
+%     wind_direction
+% and sets
+%     z_surface
+%     surface.arts
+%     skin_t_field
+%     surface_wind_speed
+%     surface_wind_direction
+
+% 2020-12-18 Patrick Eriksson
+
+
+function set_surf_fastem(P)
+
+%- Set z_surface to 0 everywhere
+%
+lat = xmlLoad( fullfile( P.wfolder, 'lat_grid.xml' ) );
+%
+xmlStore( fullfile( P.wfolder, 'z_surface.xml' ), zeros(size(lat)), ...
+          'Matrix', 'binary' );
+
+
+%- Copy include file to use
+%
+copyfile( fullfile( P.arts_files, 'surface_fastem.arts' ), ...
+          fullfile( P.wfolder, 'surface.arts' ) );
+
+
+%- Recreate original latitude grid 
+%
+lats = xmlLoad( fullfile( P.wfolder, 'lat_true.xml' ) );
+lats = lats(3:end-2);
+
+
+%- Skin temperature 
+%
+d    = xmlLoad( fullfile( P.wfolder, 'skt.xml' ) );
+%
+Gf.name      = 'Surface skin temperature';
+Gf.gridnames = { 'Latitude', 'Longitude' };
+Gf.grids     = { lats, [-180 360] };
+Gf.dataname  = 'Temperature';
+Gf.data      = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'skin_t_field.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Wind speed
+%
+d = xmlLoad( fullfile( P.wfolder, 'wind_speed.xml' ) );
+Gf.data  = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'surface_wind_speed.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Wind direction
+%
+d = xmlLoad( fullfile( P.wfolder, 'wind_direction.xml' ) );
+Gf.data  = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'surface_wind_direction.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+

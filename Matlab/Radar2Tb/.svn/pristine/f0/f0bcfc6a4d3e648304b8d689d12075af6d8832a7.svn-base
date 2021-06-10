@@ -1,0 +1,86 @@
+#DEFINITIONS:  -*-sh-*-
+#
+#   Performas an all-sky calculation
+#
+# 2020-12-18 Patrick Eriksson
+Arts2{
+
+  INCLUDE "general/general.arts"
+  INCLUDE "general/agendas.arts"
+  INCLUDE "general/planet_earth.arts"
+
+  # Read files derived from ERA5
+  ReadXML( p_grid, "p_grid.xml" )
+  ReadXML( lat_grid, "lat_grid.xml" )
+  ReadXML( lat_true, "lat_true.xml" )
+  ReadXML( lon_true, "lon_true.xml" )
+  ReadXML( z_field, "z_field.xml" )
+  ReadXML( t_field, "t_field.xml" )
+  ReadXML( vmr_field, "vmr_field.xml" )
+  ReadXML( z_surface, "z_surface.xml" )
+
+  # Some basic settings  
+  AtmosphereSet2D
+  ReadXML( f_grid, "f_grid.xml" )
+  ReadXML( stokes_dim, "stokes_dim.xml" )
+
+  # Species and absorption
+  INCLUDE "absorption.arts"
+    
+  # Check atmospheric fields
+  atmfields_checkedCalc( bad_partition_functions_ok = 1 )
+  atmgeom_checkedCalc
+
+  # Import single scattering data
+  ReadXML( scat_data_raw, "scat_data_raw.xml" )
+  ReadXML( scat_meta, "scat_meta.xml" )
+  scat_dataCalc
+  scat_data_checkedCalc
+
+  # PSDs
+  NumericCreate( phase_tlim )
+  ReadXML( phase_tlim, "phase_tlim.xml" )
+  INCLUDE "psd_rwc.arts"
+  INCLUDE "psd_iwc.arts"
+
+  # Create inversion table
+  ArrayOfGriddedField3Create( invtable )
+  VectorCreate( dbze_grid )
+  VectorCreate( t_grid )
+  VectorLinSpace( dbze_grid, -30, 25, 1 )
+  # Rain
+  VectorLinSpace( t_grid, 274, 320, 1 )
+  RadarOnionPeelingTableCalc( invtable = invtable,
+                              i_species = 0,
+                              wc_min = 1e-8,
+                              wc_max = 2e-2,
+                              dbze_grid = dbze_grid,
+                              t_grid = t_grid)
+  # Ice
+  VectorLinSpace( t_grid, 210, 273, 1 )
+  RadarOnionPeelingTableCalc( invtable = invtable,
+                              i_species = 1,
+                              wc_min = 1e-8,
+                              wc_max = 2e-2,
+                              dbze_grid = dbze_grid,
+                              t_grid = t_grid)
+
+  # Invert (CloudSat assumed)
+  Tensor3Create( reflectivities )
+  MatrixCreate( incangles )
+  ReadXML( reflectivities, "reflectivities.xml" )
+  nrowsGet( v = z_surface )
+  MatrixSetConstant( incangles, nrows, 1, 0 )
+  particle_bulkpropRadarOnionPeeling( invtable = invtable,
+                                      dBZe = reflectivities,
+                                      incangles = incangles,
+                                      dbze_noise = -26,
+                                      h_clutter = 1.5e3,
+                                      fill_clutter = 1,
+                                      t_phase = phase_tlim,
+                                      dbze_max_corr = 1 )
+
+  # Save
+  WriteXML("binary", particle_bulkprop_field, "particle_bulkprop_field.xml")
+  WriteXML("ascii", particle_bulkprop_names, "particle_bulkprop_names.xml")
+}

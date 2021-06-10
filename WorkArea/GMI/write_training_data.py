@@ -149,4 +149,49 @@ def divide_test_train(TB, randomList):
         
     return TB_test    
 
+<<<<<<< HEAD:iwc2tb/GMI/write_training_data.py
     
+=======
+#%%
+if __name__ == "__main__":
+    
+    inpath    =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_testsimulations/test_f07')  
+    inpath1   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_testsimulations/test_si') 
+    inpath    =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65/')
+ 
+     
+    matfiles  = glob.glob(os.path.join(inpath, "2010_*.mat"))
+    #matfiles1 = glob.glob(os.path.join(inpath1, "2010_*.mat"))
+    
+    #matfiles += matfiles1
+    
+    gmi       = GMI(matfiles)
+#%%    
+    ta        = to_dataarray(gmi)
+    cases     = ta.cases.values 
+    
+    randomList = random.sample(range(0, len(cases)), len(cases))
+    lim       = int(len(cases) * 0.05)
+    
+#%%    
+    ta_test = divide_test_train(ta, randomList[:lim])
+    ta_test.to_netcdf('TB_GMI_test_multiple_t.nc', 'w')
+    
+    ta_train = divide_test_train(ta, randomList[lim:])
+    ta_train.to_netcdf('TB_GMI_train_multiple_t.nc', 'w')
+    
+#%%
+    inpath   = os.path.expanduser('~/Dendrite/SatData/GMI/L1B/2021/19')
+    inpath   = os.path.expanduser('~/Dendrite/SatData/GMI/L1B/2019/01/01')
+    gmifiles = glob.glob(os.path.join(inpath, "*.HDF5"))
+
+    gmi_s    = GMI_Sat(gmifiles[2:3])
+#%%    
+    ta_s      = to_dataarray_satdata(gmi_s)
+
+    
+    ta_s.to_netcdf('TB_GMI_test_satdata.nc', 'w')
+#%%    
+    
+    
+>>>>>>> cddcf140b2abe352dccdd614b7b5032d63c23bfb:WorkArea/GMI/write_training_data.py

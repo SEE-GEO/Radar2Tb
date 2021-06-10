@@ -1,0 +1,82 @@
+% Demonstration of how to run with polarisation ratio
+
+polratio = 1.4;
+
+P.era5_zip   = '/home/patrick/Tmp/2009_182_02_A.zip';
+P.wfolder    = '/home/patrick/WORKAREA';
+P.arts       = '/home/patrick/ARTS/arts/build/src/arts';
+P.arts_files = '/home/patrick/SVN/opengem/patrick/Projects/Radar2Tb/ArtsFiles';
+P.std_habits = '/home/patrick/Data/SSDB/StandardHabits/FullSet';
+P.telsem     = '/home/patrick/Try/IWP/TessemTelsem';
+
+F.z_toa      = 25e3;    % Cut atmosphere around this altitude
+F.lwc_min    = 1e-7;    % LWC below this value is set to 0
+F.lwc_tmin   = 273-30;  % LWC at temperatures below this value is set to 0
+F.iwc_min    = 1e-8;    % IWC below this value is set to 0
+                        %
+F.phase_tlim = 273;     % No RWC/IWC below/above this temperature
+
+C.do_csky    = false;
+C.arts_time  = false;
+
+% Data that are common for all polarisations
+adopt_era5_csky( P, F );
+set_surf_fastem( P );
+adopt_dardar_iwc( P, F );
+set_rt4( P, 12 );
+
+% No scaling. We can then use I and do all channels in parallel
+%
+C.pol_mode   = 'I';
+incang = set_gmi( P, C );
+set_poslos( P, F.z_toa, incang, 250e3, true );
+set_habit( P, C, 'LargePlateAggregate', [], 'dveq' );
+copyfile( fullfile(P.arts_files,'psd_no_rwc.arts'), ...
+          fullfile(P.wfolder,'psd_rwc.arts') );
+copyfile( fullfile(P.arts_files,'psd_dardar1mom.arts'), ...
+          fullfile(P.wfolder,'psd_iwc.arts') );
+run_arts( P, C );
+TbI = get_tb_gmi( P, C );
+%
+[iwp,rwp,lat] = get_iwp( P, C );  
+
+% Run V channels
+%
+C.pol_mode   = 'V';
+set_gmi( P, C );
+set_habit( P, C, 'LargePlateAggregate', [], 'dveq', polratio );
+run_arts( P, C );
+TbV = get_tb_gmi( P, C );
+
+% Run H channel
+%
+C.pol_mode   = 'H';
+set_gmi( P, C );
+set_habit( P, C, 'LargePlateAggregate', [], 'dveq', polratio );
+run_arts( P, C );
+TbH = get_tb_gmi( P, C );
+
+
+% Combine V and H
+%
+Tb = TbV;
+Tb(:,2) = TbH(:,2);
+
+
+figure(1)
+plot( lat, Tb', '-', 'LineWidth', 1.5 );
+hold on
+set(gca,'ColorOrderIndex',1)
+plot( lat, TbI', '--', 'LineWidth', 1 );
+hold off
+%
+xlabel( 'Latitude of ground intersection' );
+ylabel( 'Tb [K]' );
+legend( '166V', '166H', '183+-7', '183+-3', '166V-I', '166H-I', ...
+        '183+-7-I', '183+-3-I','FontSize', 24, 'Location', 'SouthEast' );
+%
+figure(2)
+plot( lat, iwp );
+xlabel( 'Latitude of ground intersection' );
+ylabel( 'IWP [kg/m2]' );
+

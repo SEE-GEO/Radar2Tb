@@ -15,10 +15,12 @@ import re
 import os
 import glob
 from datetime import datetime, timedelta
+
 #rom iwc2tb.common.plot_locations_map import plot_locations_map
 from typhon.topography import SRTM30
 from iwc2tb.GMI.expand_lon import expand_lon
 from iwc2tb.GMI.interpolator import interpolator
+
 
 class GMI_Sat():
     
@@ -114,7 +116,7 @@ class GMI_Sat():
         date    = [datetime(year[i], mon[i], day[i], hour[i], minute[i], sec[i]) for i in range(len(year))]
         
         return np.array(date)
-        
+
     @property
     def lst(self):
         

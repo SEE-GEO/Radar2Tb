@@ -1,0 +1,75 @@
+% FORMAT O = o_std
+%
+%   Standard/test settings for calculation option structure O.
+%   The following fields are defined:
+%
+%   do_emissivities
+%      Set to true to extract surface emissivities and include in .mat-file. 
+%   h_clutter_land
+%      The clutter zone height above all surfaces beside open water. This
+%      field affects the data for the GIN h_clutter of ARTS' 
+%      particle_bulkpropRadarOnionPeeling.
+%   h_clutter_ocean
+%      The clutter zone height open water.
+%   icehabit     
+%      Name of ice habit. For example 'LargePlateAggregate'
+%   icepsd       
+%      Name of PSD file to use for ice. For example 'psd_dardar1mom.arts'.
+%   icesize      
+%      What type of size the PSD uses ('dmax' or 'dveq').
+%   lsampling    
+%      Sampling distance, along the orbit. For example 2e3. 
+%   onion_dBZe_noise
+%      See GIN dBZe_noise of ARTS' particle_bulkpropRadarOnionPeeling.
+%   onion_fill_clutter
+%      See GIN fill_clutter of ARTS' particle_bulkpropRadarOnionPeeling.
+%   onion_hyd_max
+%      See GIN atten_hyd_max of ARTS' particle_bulkpropRadarOnionPeeling.
+%   onion_hyd_scaling
+%      See GIN atten_hyd_scaling of ARTS' particle_bulkpropRadarOnionPeeling.
+%   onion_wc_clip
+%      See GIN wc_clip of ARTS' particle_bulkpropRadarOnionPeeling.
+%   onion_wc_max
+%      See GIN wc_max of ARTS' particle_bulkpropRadarOnionPeeling.
+%   pratio_csat  
+%      Polarisation ratio to apply for CloudSat (where H-pol is assumned).
+%   pratio_gmi   
+%      Polarisation ratio to apply for GMI. 
+%   phase_tlim   
+%      Temperature setting limit between ice and rain. 
+%   rainpsd      
+%      Name of PSD file to use for rain. For example 'psd_mp48.arts'.
+
+% 2021-03-13 Patrick Eriksson
+
+
+function O = o_std
+
+% Filtering of the input data
+O.z_toa              = 25e3;
+O.lwc_min            = 1e-8;
+O.lwc_tmin           = 273-25;
+
+% Habit and PSD settings
+O.icehabit           = 'LargePlateAggregate';
+O.icepsd             = 'psd_dardar1mom.arts';
+O.icesize            = 'dveq';
+O.rainpsd            = 'psd_mp48.arts';
+O.pratio_csat        = 1.4;
+O.pratio_gmi         = 1.4;
+O.phase_tlim         = 273.15;
+
+% Generation of .mat-files with Tb
+O.lsampling          = 2e3;
+O.do_emissivities    = false;
+
+% Radar onion peeling
+O.onion_dBZe_noise   = -25;
+O.onion_wc_clip      = 3e-3;
+O.onion_wc_max       = 10e-3;
+O.onion_fill_clutter = 1;
+O.onion_hyd_scaling  = 0.4;
+O.onion_hyd_max      = 2;
+%
+O.h_clutter_ocean    = 0.6e3;
+O.h_clutter_land     = 1.2e3;

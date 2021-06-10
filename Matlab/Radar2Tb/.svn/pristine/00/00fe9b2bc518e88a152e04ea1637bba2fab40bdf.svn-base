@@ -1,0 +1,44 @@
+% FORMAT run_arts(P,C)
+% 
+% IN    P        Path structure
+%       C        Calculation settings structure
+% OPT   do_cky   Flag to run clear-sky instead of all-sky. Default is false.
+
+% 2020-12-19 Patrick Eriksson
+
+function run_arts(P,C)
+
+
+% Set control file
+%
+cfile = fullfile( P.wfolder, 'cfile.arts' );
+%
+if C.do_csky
+  copyfile( fullfile( P.arts_files, 'clearsky.arts' ), cfile );
+else
+  copyfile( fullfile( P.arts_files, 'allsky.arts' ), cfile );
+end    
+
+
+%- Run ARTS and load result
+%
+if C.arts_time 
+  try
+    t0 = toc;
+  catch
+    tic;
+    t0 = toc;    
+  end
+end
+%
+[s,r] = system( sprintf('%s -r000 -o %s %s', P.arts, P.wfolder, cfile ) );
+%
+if s
+  disp(r)
+  error( 'Error when calling ARTS.' );
+end
+%
+if C.arts_time
+  t = toc;
+  fprintf( 'ARTS part took %.1f s\n', t-t0 );
+end

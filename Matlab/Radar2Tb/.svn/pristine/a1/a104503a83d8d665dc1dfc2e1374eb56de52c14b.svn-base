@@ -1,0 +1,80 @@
+% FORMAT B = get_beam_info(P,C)
+%
+% The output B structure has fields:
+%    pos    sensor_pos
+%    lat    Latitude, at surface
+%    lon    Longitude, at surface
+%    stype  Surface type
+%    z0     Altitude of ground interstection
+%    p0     Pressure at ground interstection
+%    t0     Air temperature at ground interstection
+%    iwp    Ice water path
+%    rwp    Rain water path
+%
+% OUT   B      Beam data structure
+% IN    P      Path structure
+%       C      Calculation settings structure
+
+% 2020-12-19 Patrick Eriksson
+
+
+function B = get_beam_info(P,C)
+
+if C.do_csky
+  error( 'This method requires that an all-sky calculation has been done.' );
+end
+
+% Set up output arguments
+%
+B.pos    = xmlLoad( fullfile(P.wfolder,'sensor_pos.xml') ); 
+npos     = size( B.pos, 1 );
+B.lat    = zeros( npos, 1 );
+B.lon    = zeros( npos, 1 );
+B.stype  = zeros( npos, 1 );
+B.z0     = zeros( npos, 1 );
+B.p0     = zeros( npos, 1 );
+B.t0     = zeros( npos, 1 );
+B.iwp    = zeros( npos, 1 );
+B.rwp    = zeros( npos, 1 );
+
+
+
+% Process ATM-1D data
+%
+any_iwp = false;
+%
+for i = 1 : npos
+  A = xmlLoad( fullfile(P.wfolder,sprintf('atm1d.%03d001000.xml',i)) );
+  B.lat(i) = A.grids{3};
+  B.lon(i) = A.grids{4};
+  B.z0(i)  = A.data(1,1);
+  B.t0(i)  = A.data(2,1);
+  B.p0(i)  = A.grids{2}(1);
+  %
+  for f = 1 : length(A.grids{1})
+    if strncmp( A.grids{1}{f}, 'Mass category', 13 )
+      imass = 1 + str2num( A.grids{1}{f}(14:end) );
+      if imass == 1
+        B.rwp(i) = trapz( A.data(1,:), A.data(f,:) );
+      elseif imass == 2
+        B.iwp(i) = trapz( A.data(1,:), A.data(f,:) );
+        any_iwp = true;
+      else
+        error( 'Mass category %.0f found. Not handled.', imass );
+      end
+    end
+  end
+end
+%
+if ~any_iwp
+  B.iwp = B.rwp;
+  B.rwp = zeros( npos, 1 );
+end
+
+
+% Get surface types
+%
+T = xmlLoad( fullfile(P.wfolder,'surface_type_mask.xml') );
+%
+B.stype = floor( interp1( T.grids{1}, T.data(:,1), B.lat ) );
+

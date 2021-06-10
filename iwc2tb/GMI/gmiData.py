@@ -27,7 +27,9 @@ class gmiData(Dataset):
                  outputs,
                  batch_size = None,
                  latlims = None,
-                 normalise = None):
+                 normalise = None, 
+                 transform = None):
+
         """
         Create instance of the dataset from a given file path.
 
@@ -40,11 +42,12 @@ class gmiData(Dataset):
         
         #self.log_iwp = log_iwp
         self.batch_size = batch_size
-        #self.transform  = transform
+        self.transform  = transform
         self.file = netCDF4.Dataset(path, mode = "r")
 
         ta = self.file.variables["ta"]
         TB = ta[:]
+
 
 
         self.lon   = ta.lon.reshape(-1, 1)
@@ -90,7 +93,7 @@ class gmiData(Dataset):
         
         self.inputs = inputs       
         idx = []
-        
+
         for i in range(len(inputs)):
             idx.append(np.argwhere(inputnames == inputs[i])[0][0]) 
                                                                             
@@ -102,6 +105,7 @@ class gmiData(Dataset):
             C.append(all_inputs[i])
             
         x = np.float32(np.concatenate(C, axis = 1))
+
         
         if latlims is not None:            
             ilat = (np.abs(self.lat) >= latlims[0]) & (np.abs(self.lat) <= latlims[1])
@@ -141,12 +145,12 @@ class gmiData(Dataset):
         else:
 
             self.norm = normalise      
-            
+
         
         self.y = np.float32(all_outputs[idy])
         
         self.x = x.data
-        
+
         # fill in IWP below 1e-4      
         y = np.copy(self.y)
         
@@ -154,7 +158,7 @@ class gmiData(Dataset):
         y[inds] = 10 ** np.random.uniform(-6, -4, inds.sum())
         self.y = y
     
- 
+
         self.file.close()
 
     def __len__(self):
@@ -192,8 +196,8 @@ class gmiData(Dataset):
             y = torch.tensor(self.y[[i]])
             x = torch.tensor(self.x[[i], :])
             
-            # if self.transform is not None:
-            y = self.transform(y)
+            #if self.transform is not None:
+            #y = self.transform1(y)
             
             return (x, y)
         else:
@@ -213,8 +217,8 @@ class gmiData(Dataset):
             x = torch.tensor(x_norm)
             y = torch.tensor(self.y[i_start : i_end])
             
-
-            y = self.transform(y)
+    
+            #y = self.transform1(y)
             
             return (x, y)
      
@@ -275,6 +279,7 @@ class gmiData(Dataset):
         return x_norm
 
 
+
     def to_encode(self, stype):
         
         encodedlsm = to_categorical(stype, num_classes=11)
@@ -317,21 +322,13 @@ class gmiData(Dataset):
         return x
     
 
-    def transform(self, y):
+    def transform1(self, y):
 
                 
-        logy = LogLinear()           
+        logy = Log()           
         y    = logy(y)
         
         return y
-    
-    # def invert(self, y):
-        
-    #     logy = Log()
-        
-    #     y    = logy.invert(y)
-        
-    #     return y
+
             
-        
-        
+

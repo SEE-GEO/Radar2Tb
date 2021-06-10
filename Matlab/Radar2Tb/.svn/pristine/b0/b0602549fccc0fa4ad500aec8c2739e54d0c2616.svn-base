@@ -1,0 +1,19 @@
+Atmlab is needed to run these files
+
+To test, copy demo_iwc2tb to another folder and edit copy.
+
+Edit path settings in the copy.
+
+P.wfolder is the "work folder", i.e. a folder of temporary character.
+A high number of folders will be placed in this folder. For testing,
+just create one manually. Note that each matlab process needs its own
+folder, otherwise files can be overwitten. For later operational work
+a folder can be created (inside a function) as
+  workfolder = create_tmpfolder;
+  cu = onCleanup( @()delete_tmpfolder( workfolder ) );
+
+Other paths should hopefully be self explanatory.
+
+Single scattering data (as "standard habits") are found at
+Dendrite/SSDB/ArtsScatDbase/ArtsScatDbase_v1.1.0/StandardHabits/FullSet
+Maybe a good idea to copy the habits you use to the local drive

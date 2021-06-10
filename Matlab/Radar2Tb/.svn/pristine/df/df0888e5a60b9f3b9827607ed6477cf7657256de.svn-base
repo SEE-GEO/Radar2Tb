@@ -1,0 +1,72 @@
+#DEFINITIONS:  -*-sh-*-
+#
+# Fastem used for water
+# Telsem used for land
+#
+Arts2{
+
+  NumericCreate( wspeed )
+  NumericCreate( wdirec )
+    
+  GriddedField2Create( skin_t_field )
+  GriddedField2Create( surface_wind_speed )
+  GriddedField2Create( surface_wind_direction )
+    
+  ReadXML( surface_type_mask, "surface_type_mask.xml" )
+  ReadXML( skin_t_field, "skin_t_field.xml" )
+  ReadXML( surface_wind_speed, "surface_wind_speed.xml" )
+  ReadXML( surface_wind_direction, "surface_wind_direction.xml" )
+
+  VectorCreate( transmittance )
+
+  AgendaSet( surface_rtprop_agenda ) {
+    surface_typeInterpTypeMask(method="nearest")      
+    surface_rtpropCallAgendaX
+  }
+
+  AgendaSet( iy_surface_agenda ) {
+    SurfaceDummy
+    iySurfaceRtpropAgenda
+  }
+  
+  # Surface type 0: Fastem
+  #
+  ArrayOfAgendaAppend( surface_rtprop_agenda_array ){
+    Ignore( agenda_array_index )
+    Ignore( surface_type_aux )
+    specular_losCalc( ignore_surface_slope = 1 )
+    InterpGriddedField2ToPosition( out = surface_skin_t, 
+                               gfield2 = skin_t_field )
+    InterpGriddedField2ToPosition( out = wspeed, 
+                               gfield2 = surface_wind_speed )
+    InterpGriddedField2ToPosition( out = wdirec, 
+                               gfield2 = surface_wind_direction )
+    nelemGet( nelem, f_grid )
+    VectorSetConstant( transmittance, nelem, 0.8 )
+    surfaceFastem(          wind_speed = wspeed, 
+                        wind_direction = wdirec,
+                         transmittance = transmittance )
+  } 
+
+  # Surface type 1: Telsem 
+  #
+  StringCreate( telsem_folder )
+  IndexCreate( telsem_month )
+  TelsemAtlasCreate( telsem_atlas )
+  #
+  ReadXML( telsem_folder, "telsem_folder.xml" )
+  ReadXML( telsem_month, "telsem_month.xml" )
+  #
+  telsem_atlasReadAscii( atlas = telsem_atlas,
+                     directory = telsem_folder,
+                         month = telsem_month )
+
+  ArrayOfAgendaAppend( surface_rtprop_agenda_array ){
+    Ignore( agenda_array_index )
+    Ignore( surface_type_aux )
+    InterpGriddedField2ToPosition( out = surface_skin_t, 
+                               gfield2 = skin_t_field )
+    surfaceTelsem( atlas = telsem_atlas, d_max = 1e9,
+                   r_min = 0, r_max = 0.3 )
+  } 
+}

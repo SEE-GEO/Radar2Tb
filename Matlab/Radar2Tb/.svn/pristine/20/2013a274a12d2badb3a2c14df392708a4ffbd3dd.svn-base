@@ -1,0 +1,57 @@
+% FORMAT [C,incang = set_icecube(P,C) 
+%
+% OUT   C      Extended, with C.pol_mode set
+%       incang Incident angle       
+% IN    P      Path structure
+%       C      Calculation settings structure
+%       nf     Number of frequencies per band
+%
+% Sets
+%    f_grid
+%    stokes_dim
+%    absorption.arts
+
+% 2020-12-26 Patrick Eriksson
+
+function [C,incang] = set_icecube(P,C,nf)
+
+
+%- Output
+%
+C.pol_mode = 'H';
+incang     = 8;
+
+
+%- f_grid (Hand-picked values used for n=1
+%
+if nf == 1
+  f_grid = [873.945e9 892.4e9]';
+else
+  df = 6e9/nf;
+  %
+  f_grid = 883e9 + symgrid( 6e9+0.5*df : df : 12e9-0.5*df ); 
+  %f_grid = 883e9 + [6e9+0.5*df : df : 12e9-0.5*df ]';
+  %f_grid = 883e9 - flipud([6e9+0.5*df : df : 12e9-0.5*df ]');
+end
+%
+xmlStore( fullfile( P.wfolder, 'f_grid.xml' ), f_grid, 'Vector' );
+
+
+%- stokes
+%
+xmlStore( fullfile( P.wfolder, 'stokes_dim.xml' ), 1, 'Index' );
+
+
+%- iy_unit
+%
+xmlStore( fullfile( P.wfolder, 'iy_unit.xml' ), 'RJBT', 'String' );
+
+
+%- Species and absorption files
+%
+copyfile( fullfile( P.arts_files, 'continua_rttov.arts' ), ...
+          fullfile( P.wfolder, 'continua.arts' ) );
+copyfile( fullfile( P.arts_files, 'lines_icecube.hi' ), ...
+          fullfile( P.wfolder, 'lines_icecube.hi' ) );
+copyfile( fullfile(P.arts_files,'absorption_icecube.arts'), ...
+          fullfile(P.wfolder,'absorption.arts') );

@@ -1,0 +1,14 @@
+Arts2{
+  StringSet( species_id_string, "IWC" )
+  ArrayOfStringSet( pnd_agenda_input_names, [ "IWC", "N0star" ] )
+  ArrayOfAgendaAppend( pnd_agenda_array ){
+    ScatSpeciesSizeMassInfo( species_index=agenda_array_index, x_unit="dveq",
+                             x_fit_start=100e-6 )
+    Copy( psd_size_grid, scat_species_x )
+    Copy( pnd_size_grid, scat_species_x )
+    psdDelanoeEtAl14( Dm=-999, t_min = 150, t_max = phase_tlim )
+    pndFromPsdBasic
+  }
+  Append( scat_species, species_id_string )
+  Append( pnd_agenda_array_input_names, pnd_agenda_input_names )
+}

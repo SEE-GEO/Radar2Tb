@@ -1,0 +1,3 @@
+Arts2{
+  StringCreate( species_id_string )
+}

@@ -32,6 +32,10 @@ class spareICE():
             dataset.close()
             
         self.iwp = np.concatenate(iwp)
+<<<<<<< HEAD
         self.lon = np.concatenate(iwp)
+=======
+        self.lon = np.concatenate(lon)
+>>>>>>> cddcf140b2abe352dccdd614b7b5032d63c23bfb
         self.lat = np.concatenate(lat)
         

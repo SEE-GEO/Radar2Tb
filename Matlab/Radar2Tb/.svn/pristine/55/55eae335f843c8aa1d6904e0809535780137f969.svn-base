@@ -1,0 +1,97 @@
+% RUN1ICECUBE   IceCube simulations over one orbit part
+%
+% The fields of *P* are:
+%   P.outfolder   Folder where to save results
+%   P.era5_zip    Full path to input zip file
+%   P.wfolder     Work folder. If empty, a temporary folder is created.
+%   P.arts        Full path to ARTS executable.
+%   P.arts_files  Full path to input files coming with Radar2Tb
+%   P.std_habits  Full path to folder with standard habits files.
+%   P.telsem      Full path to folder with TELSEM and TESSEM input files.
+%
+% FORMAT run1icecube(P[,icehabit,lsampling,polratio])
+%
+% IN   P           See above
+% OPT  icehabit    Name of ice habit. Default is LargePlateAggregate'
+%      lsampling   Sampling distance, along the orbit. Default is 3 km.
+%      polratio    Polarisation ratio, as defined in Barlakas et al. AMTD
+%                  Default is 1.4.
+
+% 2021-01-11   Patrick Eriksson
+
+function run1icecube(P,icehabit,lsampling,polratio)
+%
+if nargin < 2 | isempty(icehabit), icehabit = 'LargePlateAggregate'; end
+if nargin < 3 | isempty(lsampling), lsampling = 3e3; end
+if nargin < 4 | isempty(polratio), polratio = 1.4; end
+
+
+%- Create name of output file
+%
+[~,casename] = fileparts( P.era5_zip );
+outfile = fullfile( P.outfolder, [casename,'.mat'] );
+
+
+%- Check input
+%
+if exist( outfile, 'file' )
+  fprintf( 'Output file already exists (%s).\n', casename );
+  return
+end
+if ~exist( P.era5_zip, 'file' )
+  fprintf( 'Did not find\n%s\n', P.era5_zip );
+  return
+end
+%
+fprintf( 'Doing %s ...', casename );
+
+
+%- Workfolder
+%
+if isempty( P.wfolder )
+  P.wfolder = create_tmpfolder;
+  cu = onCleanup( @()delete_tmpfolder( P.wfolder ) );
+end
+
+
+%- Hard-coded settings
+%
+F.z_toa      = 50e3;    % Cut atmosphere around this altitude
+F.lwc_min    = 1e-8;    % LWC below this value is set to 0
+F.lwc_tmin   = 273-30;  % LWC at temperatures below this value is set to 0
+F.iwc_min    = 1e-8;    % IWC below this value is set to 0
+                        %
+F.phase_tlim = 275;     % No RWC/IWC below/above this temperature
+
+C.do_csky    = false;
+C.arts_time  = false;
+
+
+%- Set up data
+%
+adopt_era5_csky( P, F );
+set_surf_blackbody( P );
+[C,incang] = set_icecube( P, C, 3 );
+set_poslos( P, F.z_toa, incang, lsampling, true );
+%
+adopt_dardar_iwc( P, F );    
+copyfile( fullfile(P.arts_files,'psd_no_rwc.arts'), ...
+          fullfile(P.wfolder,'psd_rwc.arts') );
+set_habit( P, C, icehabit, [], 'dveq', polratio );
+copyfile( fullfile(P.arts_files,'psd_dardar1mom.arts'), ...
+          fullfile(P.wfolder,'psd_iwc.arts') );
+set_rt4( P, 12 );
+
+
+% Calculate and load
+%
+run_arts( P, C );
+Tb = get_tb_icecube( P );
+[iwp,rwp,lat] = get_iwp( P, C );
+
+
+%- Save to outfile
+%
+save( outfile, 'Tb', 'iwp', 'lat', 'icehabit', 'lsampling', 'polratio' );
+%
+fprintf( '\rDone: %s      \n', casename );

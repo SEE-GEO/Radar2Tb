@@ -1,0 +1,31 @@
+% FORMAT set_surf_blackbody(P)
+%
+% IN    P   Path structure
+%
+% This functions make use of
+%     z_surface
+% and sets
+%     z_surface
+%     surface.arts
+
+% 2020-12-26 Patrick Eriksson
+
+
+function set_surf_blackbody(P)
+
+
+%- z_surface
+%
+z = xmlLoad( fullfile( P.wfolder, 'z_surface.xml' ) );
+%
+z = [z(1);z(1);z;z(end);z(end)];
+%
+xmlStore( fullfile( P.wfolder, 'z_surface.xml' ), z, 'Matrix', 'binary' );
+
+
+%- Copy include file to use
+%
+copyfile( fullfile( P.arts_files, 'surface_blackbody.arts' ), ...
+          fullfile( P.wfolder, 'surface.arts' ) );
+
+% Surface skin temperature is taken from t_field 
