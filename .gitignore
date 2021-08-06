@@ -2,3 +2,7 @@
 *.png
 *.pickle
 *.nc
+*.bbl
+*.aux
+*.blg
+*.log
