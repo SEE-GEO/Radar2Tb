@@ -4,6 +4,10 @@ import torch
 from torch.utils.data import Dataset
 from iwc2tb.GMI.lsm_gmi2arts import lsm_gmi2arts
 from iwc2tb.GMI.swap_gmi_183 import swap_gmi_183
+from numpy import argmax
+import random
+from keras.utils import to_categorical
+from quantnn.normalizer import Normalizer 
 
 class gmiSatData(Dataset):
     """
@@ -15,8 +19,7 @@ class gmiSatData(Dataset):
                  outputs,
                  batch_size = None,
                  latlims = None,
-                 std = None,
-                 mean = None,                 
+                 normalize = None,                
                  log = False):
         """
         Create instance of the dataset from a given file path.
@@ -29,7 +32,7 @@ class gmiSatData(Dataset):
         super().__init__()
         
         self.batch_size = batch_size
-        
+        self.norm   = normalize
         self.gmi    = gmi
 
         TB = self.gmi.tb
@@ -44,19 +47,32 @@ class gmiSatData(Dataset):
         self.t2m   = self.gmi.t0
         self.wvp   = self.gmi.wvp
         self.lst   = self.gmi.lst
-        self.stype = lsm_gmi2arts(self.lsm) 
+        self.z0    = self.gmi.z0
+        stype      = lsm_gmi2arts(self.lsm) 
 
+        # one hot encoding for categorical variable stype
+        self.stype = self.to_encode(stype)
         
-        all_inputs = [TB, self.t2m[:, :, np.newaxis], 
-                      self.lon[:, :, np.newaxis], self.lat[:, :, np.newaxis],
-                      self.stype[:, :, np.newaxis], self.wvp[:, :, np.newaxis]] 
+        # given all inputs, the chosen variables for
+        #training given as "inputs" on init
+        all_inputs = [TB, 
+                      self.lon[:, :, np.newaxis], 
+                      self.lat[:, :, np.newaxis],
+                      self.stype,
+                      self.t2m[:, :, np.newaxis], 
+                      self.wvp[:, :, np.newaxis],
+                      self.z0[:, :, np.newaxis]] 
         
-        inputnames = np.array(["ta", "t2m",
-                               "lon", "lat", "stype",
-                                "wvp"])
+        inputnames = np.array(["ta",
+                               "lon",
+                               "lat",
+                               "stype",
+                               "t2m",
+                               "wvp",
+                               "z0"])
         
 
-        outputnames = np.array(["iwp", "rwp", "wvp"])
+        outputnames = np.array(["iwp", "wvp"])
         
         idy         = np.argwhere(outputnames == outputs)[0][0]
         
@@ -87,21 +103,22 @@ class gmiSatData(Dataset):
         self.rwp  = self.rwp[ilat[:, 0], :]
         self.lst  = self.lst[ilat[:, 0], :]
         self.t2m  = self.t2m[ilat[:, 0], :]
+        self.z0   = self.z0[ilat[:, 0], :]
         self.stype = self.stype[ilat[:, 0], :]
         
 
 
             
-        all_outputs = [self.iwp, self.rwp, self.wvp]    
+        all_outputs = [self.iwp, self.wvp]    
             
-        if std is not None:
-            self.std = std
-        else:
-            self.std = np.std(x, axis = (0, 1))
-        if mean is not None:
-            self.mean = mean
-        else:
-            self.mean = np.mean(x, axis = (0, 1))
+        # if std is not None:
+        #     self.std = std
+        # else:
+        #     self.std = np.std(x, axis = (0, 1))
+        # if mean is not None:
+        #     self.mean = mean
+        # else:
+        #     self.mean = np.mean(x, axis = (0, 1))
         
         self.y = np.float32(all_outputs[idy])
         
@@ -109,9 +126,11 @@ class gmiSatData(Dataset):
         
 #        self.y = np.where(self.y ==0, 1e-12)
 
+        nanmask = self.y <= 0
         if log == True:
-            self.y = np.log(self.y)            
-
+            self.y[~nanmask] = np.log(self.y[~nanmask])            
+            self.y[nanmask]  = np.nan    
+            
 #        self.file.close()
 
     def __len__(self):
@@ -135,46 +154,67 @@ class gmiSatData(Dataset):
         Args:
             i: The index of the sample to return
         """
-        # if (i == 0):
-
-        #     indices = np.random.permutation(self.x.shape[0])
-        #     self.x   = self.x[indices, :]
-        #     self.y   = self.y[indices]
-        #     self.lon = self.lon[indices]
-        #     self.lat = self.lat[indices]
-        #     self.lst = self.lst[indices]
 
         if self.batch_size is None:
             return (torch.tensor(self.x[i, :, :]),
                     torch.tensor(self.y[i, :, :]))
         else:
             
-            i_start = self.batch_size * i
-            i_end   = self.batch_size * (i + 1)             
+            i_start         = self.batch_size * i
+            i_end           = self.batch_size * (i + 1)             
             
-            x       = self.x[i_start : i_end, :, :]
+            x               = self.x[i_start : i_end, :, :]
+            
+            # normalise 
+            x_norm          = x.copy()
+            
+            i, j, k         = x.shape
+            x_norm          = x.reshape(i*j, k)
+            
+            x               = self.norm(x_norm)
+            x               = x.reshape(i, j, k)
 
-#            x_norm        = x.copy()
-            x_norm        = np.float32(self.normalise_std(x))
             
-            return (torch.tensor(x_norm),
+            return (torch.tensor(x),
                     torch.tensor(self.y[i_start : i_end, :]))
         
   
  
-    def normalise_std(self, x):
-        """
-        normalise the input data with mean and standard deviation
-        Args:
-            x
-        Returns :
-            x_norm
-        """          
+    # def normalise_std(self, x):
+    #     """
+    #     normalise the input data with mean and standard deviation
+    #     Args:
+    #         x
+    #     Returns :
+    #         x_norm
+    #     """          
 
-        x_norm = (x - self.mean)/self.std   
+    #     x_norm = (x - self.mean)/self.std   
             
-        return x_norm 
+    #    return x_norm 
     
+    def to_encode(self, stype):
+        
+        # class 11 is defined to handle np.nan, it is "others" class
+        stype[np.isnan(stype)] = 10
+        
+        encodedlsm = to_categorical(stype, num_classes=11)
+        
+        return encodedlsm
+    
+    def to_decode(self, encodedstype):
+        
+        lsm = np.argmax(encodedstype, axis = 2)
+        
+        return lsm
+    
+    
+         
+    def get_indices(self, inputname):
+        
+        sindex = np.where(self.inputs == inputname)[0][0]
+        
+        return sindex
                 
             
             

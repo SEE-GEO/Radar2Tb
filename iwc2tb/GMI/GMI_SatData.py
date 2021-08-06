@@ -16,6 +16,9 @@ import os
 import glob
 from datetime import datetime, timedelta
 from iwc2tb.common.plot_locations_map import plot_locations_map
+from typhon.topography import SRTM30
+from iwc2tb.GMI.expand_lon import expand_lon
+from era2dardar.utils.interpolator import interpolator
 
 class GMI_Sat():
     
@@ -269,6 +272,45 @@ class GMI_Sat():
         else:
             raise Exception("Parameter should be one of  ", self.gprof_parameters)
     
+    @property
+    def z0(self):
+        
+        era      = xarray.open_dataset("orography.nc") 
+        # flip latitude to be in ascending order        
+        era      = era.sortby('latitude' , ascending = True) 
+             
+        glat     = era['latitude'].data
+        glon     = era['longitude'].data     
+        field    = era['z'].data[0]
+        glon, field = expand_lon(glon, field) 
+        
+        my_interpolating_function = (interpolator((glat, glon), field, 
+                                                  method= "linear"))  
+        
+        
+        lat = self.lat.ravel()
+        lon = self.lon.ravel()%360
+        
+        pts = [[lat[j], lon[j]] for j in range(len(lat))]     
+        grid_z = my_interpolating_function(pts)
+        
+    
+        
+        s1 = np.sin(lat/180*np.pi);
+        s2 = np.sin(2*lat/180*np.pi);
+
+        gE  = 9.780327 * (1 + 5.3024e-3 * s1**2 - 5.8e-6*s2**2)
+        
+            
+        rE  = 6378137./(1.006803-0.006706*s1**2)
+        
+        grid_z = rE*( gE*rE / ( gE*rE - grid_z ) -1 )
+        
+        grid_z = grid_z.reshape(self.lat.shape)
+
+        
+        return grid_z
+        
     
     def plot_scene(self, z = None):        
         """

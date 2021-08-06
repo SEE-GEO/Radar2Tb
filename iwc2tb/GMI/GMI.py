@@ -62,8 +62,8 @@ class GMI():
             zfile = file.replace(".mat", ".zip")
 #           zfile = zfile.replace("GMI_m65", "DARDAR_ERA_m65")
             fname = os.path.basename(zfile)
-            zfile = os.path.join("/home/inderpreet/Dendrite/Projects/IWP/GMI", "DARDAR_ERA_m65_p65_SRTM", fname)
-
+            zfile = os.path.join("/home/inderpreet/Dendrite/Projects/IWP/GMI", "DD_CS_ERA_m65_p65", fname)
+            #zfile = os.path.join("/home/inderpreet/Dendrite/Projects/IWP/GMI", "DARDAR_ERA_m65_p65_SRTM", fname)
             inputfiles.append(zfile)
         return inputfiles    
       
@@ -196,7 +196,35 @@ class GMI():
                 mat = self.mat[i]
                 data.append(mat["B"][parameter][0,0])
             return data
-        
+
+    @property
+    def pratio(self):
+        """
+        method to read in ARTS setup inputs
+
+        Parameters
+        ----------
+        parameter : string containing the name of the input to be extracted
+
+        Raises
+        ------
+            valueError if the parameter is not in the list 
+            
+        Returns
+        -------
+        data : list of arrays containing the parameter desired
+
+        """
+        data = []
+        for i in range(len(self.mat)):
+                mat = self.mat[i]
+                pr  = mat["O"]["pratio_gmi"][0,0]
+                lat = mat["B"]["lat"][0, 0]
+                pratio = np.zeros(lat.shape)
+                print (pratio.shape)
+                pratio[:, :] = pr[0][0]
+                data.append(pratio)
+        return np.concatenate(data, axis = 0).ravel()          
         
     def get_O(self, parameter):
         """
