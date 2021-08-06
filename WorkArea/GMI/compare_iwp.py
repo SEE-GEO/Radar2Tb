@@ -12,7 +12,7 @@ import glob
 from iwc2tb.GMI.GMI import GMI
 import zipfile
 import typhon.arts.xml as xml
-from era2dardar import zip2dardar
+from era2dardar.utils.zip2dardar import zip2dardar
 from era2dardar.DARDAR import DARDARProduct
 from era2dardar.atmData import atmdata
 from era2dardar.utils.alt2pressure import alt2pres, pres2alt
@@ -76,13 +76,19 @@ def dardar_iwp(zipfiles):
     p_grid = (np.concatenate([p_grid, 
                              np.array([30, 20, 10, 7, 5, 3, 2, 1]) * 100]))
     
+    
+    p_grid_fine = alt2pres(np.arange(-700, 8000, 125))
+    p_grid_coarse = alt2pres(np.arange(8000, 20000, 250))
+    p_grid = (np.concatenate([p_grid_fine, p_grid_coarse,
+                             np.array([30, 20, 10, 7, 5, 3, 2, 1]) * 100]))
+    
     iwp_total = []
     lat_all = []
     lon_all = []
     
     for zfile in zipfiles:
         print (zfile)
-        dardarfile, N = zip2dardar.zip2dardar(zfile)
+        dardarfile, N = zip2dardar(zfile)
         z_field = read_from_zip(zfile, "z_field")
         dardar = DARDARProduct(dardarfile, latlims = [-65, 65], node = N)
         
@@ -131,13 +137,13 @@ if __name__ == "__main__":
     # GMI simulations    
     #inpath   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/test/test1.3')  
     #inpath1  =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_testsimulations/test_f07')
-    inpath2  =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_v1.0')
+    inpath2  =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_v1.1')
 
     
     
     #matfiles = glob.glob(os.path.join(inpath, "2010_*.mat"))
     #matfiles1 = glob.glob(os.path.join(inpath1, "2010_0*.mat")) 
-    matfiles2 = glob.glob(os.path.join(inpath2, "2010_0*.mat")) 
+    matfiles2 = glob.glob(os.path.join(inpath2, "2009_1*.mat")) 
 
 # #%% find files with high IWC
     
@@ -174,7 +180,7 @@ if __name__ == "__main__":
 #             #    print (file)
 #             #    plot_locations_map(gmi.lat, gmi.lon, gmi.iwp)
         
-
+    matfiles2 = matfiles2[:25]
 
 #%%    
     gmi = GMI(matfiles2)
@@ -214,6 +220,17 @@ if __name__ == "__main__":
     # ax.set_xscale('log')
     ax.legend()
     fig.savefig("Figures/IWP_GMI_dardar.png", bbox_inches = "tight")    
+    
+#%%
+    from matplotlib import cm
+    import matplotlib.colors as colors
+    fig, ax = plt.subplots(2, 1 , figsize = [8, 8])
+    ax = ax.ravel()
+    ax[0].scatter(glon, glat, c = giwp, norm=colors.LogNorm(vmin=1e-4, vmax= 15), 
+                  cmap = cm.gist_ncar)
+    cs = ax[1].scatter(dlon, dlat, c = diwp, norm=colors.LogNorm(vmin=1e-4, vmax= 15), 
+                  cmap = cm.gist_ncar)
+    fig.colorbar(cs, ax = ax)    
     
 #%% PDF of IWP
     

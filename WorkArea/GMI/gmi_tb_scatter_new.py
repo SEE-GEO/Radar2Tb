@@ -31,71 +31,6 @@ from matplotlib import ticker, cm
 plt.rcParams.update({'font.size': 30})
 
 
-
-
-#%%
-#get antenna weighted TB values
-def get_Ta(matfiles,  latlims = None, lsm = None ):
-    """
-    Get antenna weighted brightness temperature values
-    Also, allows for sub-setting the data by lat limits and stype.
-    
-
-    Parameters
-    ----------
-    matfiles : list containing names of files for GMI simulations
-    latlims : list, optional
-        THe lower and upper limit of lat lims. 
-        Only positive values need to be given. 
-        The default is None.
-    lsm : float, optional
-        the stype for which Ta has to be subset for. The default is None.
-
-    Returns
-    -------
-    Ta_all : np.array [n x 4], antenna weighted TB for 4 GMI channels
-    lat_all : np.array [n], the latitudes where Ta_all are defined
-
-    """
-    nedt = np.array([0.70, 0.65, 0.47, 0.56 ])
-    Ta_all  = []
-
-#    for i in range(4):
-
-    lat_all = []
-    lon_all = []
-    stype_all = []
-    for ix, file in enumerate(matfiles[:]):
-            print (file)
-            
-            gmi = GMI(file)
-            
-            lat_all.append(gmi.lat)
-            lon_all.append(gmi.lon)
-            
-
-            lsm_new = filter_stype(gmi.lat, gmi.stype )
-            stype_all.append(lsm_new)
-            
-            Ta = []
-           
-            for i in range(4):
-            # calculate antenna weighted values
-                ta = apply_gaussfilter(gmi.lat, gmi.tb[:, i], 6/111)# 6km smoothing
-                ta = add_gaussian_noise(ta, [nedt[i]])
-    
-                Ta.append(ta)  
-
-
-                    
-            Ta = np.concatenate(Ta, axis = 1) 
-
-            Ta = np.squeeze(Ta)
-            Ta_all.append(Ta)
-    
-    return np.vstack(Ta_all), np.concatenate(lat_all), np.concatenate(lon_all), np.concatenate(stype_all)
-
-    
 #%%plot PDFs for all 4 channels   
 def plot_pdf_gmi(Ta, Tb, bins= None, figname = "distribution_gmi.pdf"):
     
@@ -134,7 +69,6 @@ def plot_pdf_gmi(Ta, Tb, bins= None, figname = "distribution_gmi.pdf"):
 
 
 #%% scatter plots
-
 def plot_scatter(Ta, Tb_gmi,  freq, figname = "scatter_gmi.pdf"):
     fig, axs = plt.subplots(2, 3, figsize = [30, 20])
     fig.tight_layout(pad=3.0)
@@ -456,25 +390,15 @@ if __name__ == "__main__":
     tb_gmi, lat_gmi, lon_gmi, lsm_gmi = remove_oversampling_gmi(tb_gmi, lat_gmi, lon_gmi, lsm_gmi)
     
     # GMI simulations    
-    inpath   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65') 
+    inpath   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_v1.0') 
  
      
     matfiles = glob.glob(os.path.join(inpath, "2010_0*.mat"))
-#    matfiles1 = glob.glob(os.path.join(inpath1, "2010_*.mat"))
-
-    
+   
     
     gmi      = GMI(matfiles)
     ta, lat, lon, stype = gmi.ta_noise, gmi.lat, gmi.lon, gmi.stype
     ta = swap_gmi_183(ta)
- 
-    # ta1, lat1, lon1, stype1 = get_Ta(matfiles[:])
-    # ta1 = swap_gmi_183(ta1)
-    
-
-    
-    # latlims = [4, 65]
-    # compare_psd(ta, lat, lon, stype, ta1, lat1, lon1, stype1, latlims)
 
        
     # GMI frequencies
@@ -493,10 +417,10 @@ if __name__ == "__main__":
     # higher latitudes
     
     print ("doing 30-45, all")    
-    latlims  = [30, 45]
+    latlims  = [0, 65]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, lsm, lsm,  
-                figname = "hist2d_gmi_30-45_all.png")
+                figname = "hist2d_gmi_0-65_all.png")
 
     
     print ("doing 45-60, all")
@@ -553,20 +477,14 @@ if __name__ == "__main__":
 
 
     
-    latlims  = [45, 65]   
+    latlims  = [0, 65]   
         
   
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_45-60_land.png")
+                figname = "hist2d_gmi_0-65_land.png")
 
 
-    latlims  = [0, 45]   
-    
-    call_hist2d(ta[mask, :], lat[mask], lon[mask], stype[mask],
-                tb_gmi[mask_gmi, :], lat_gmi[mask_gmi], lon_gmi[mask_gmi], 
-                lsm_gmi[mask_gmi], latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_45-60_land_himalaya.png")
 
     
 #%% higher latitudes sea
@@ -593,10 +511,10 @@ if __name__ == "__main__":
     
     print ("doing tropics, sea")
 
-    latlims  = [0, 30]
+    latlims  = [0, 65]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi,  
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_tropics_sea.png")  
+                figname = "hist2d_gmi_0-65_sea.png")  
     
     
 #%% higher latitudes sea-ice

@@ -34,10 +34,9 @@ from plot_pdf_gmi import plot_pdf_gmi
 from plot_scatter import plot_scatter
 from plot_hist2d import plot_hist2d
 from filter_gmi_sat import filter_gmi_sat
-from iwc2tb.GMI.swap_gmi_183 import swap_gmi_183
 from remove_oversampling_gmi import remove_oversampling_gmi
 from plot_hist import plot_hist
-plt.rcParams.update({'font.size': 34})
+plt.rcParams.update({'font.size': 38})
 
 #%%
 def call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
@@ -69,6 +68,19 @@ def compare_psd(ta, lat, lon, stype, ta1, lat1, lon1, stype1, latlims):
     ax.legend()
     ax.set_yscale('log')
     
+
+#%%
+
+def swap_gmi_183(ta1):
+    
+        temp = np.zeros(ta1.shape)
+        temp[:,  1] = ta1[:, 1]
+        temp[:,  0] = ta1[:, 0]
+        temp[:,  2] = ta1[:, 3]
+        temp[:,  3] = ta1[:, 2]
+        ta1 = temp.copy()
+        
+        return ta1 
     
 
 #%%    
@@ -81,7 +93,7 @@ if __name__ == "__main__":
     # GMI satellite data   
     inpath_gmi   = os.path.expanduser('~/Dendrite/SatData/GMI/L1B/2019/01/')
     # GMI simulations    
-    inpath_mat   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_testsimulations/test_si') 
+    inpath_mat   =  os.path.expanduser('~/Dendrite/Projects/IWP/GMI/GMI_m65_p65_v1.1/esa') 
     # GMI frequencies
     freq     = ["166.5V", "166.5H", "183+-3", "183+-7"]    
 
@@ -89,7 +101,7 @@ if __name__ == "__main__":
     gmifiles = glob.glob(os.path.join(inpath_gmi, "*/*.HDF5"))
     
     random.shuffle(gmifiles)
-    gmi_sat = GMI_Sat(gmifiles[:15])
+    gmi_sat = GMI_Sat(gmifiles[:20])
     
     lat_gmi = gmi_sat.lat
     lon_gmi = gmi_sat.lon
@@ -109,9 +121,11 @@ if __name__ == "__main__":
 
 #%% read GMI simulations 
      
-    matfiles = glob.glob(os.path.join(inpath_mat, "2010_0*.mat"))
-   
+    matfiles1 = glob.glob(os.path.join(inpath_mat, "2009_00*.mat"))
+    matfiles2 = glob.glob(os.path.join(inpath_mat, "2009_01*.mat"))
+    matfiles3 = glob.glob(os.path.join(inpath_mat, "2009_02*.mat"))
     
+    matfiles = matfiles1 + matfiles2 + matfiles3
     gmi                 = GMI(matfiles)
     ta, lat, lon, stype = gmi.ta_noise, gmi.lat, gmi.lon, gmi.stype
     ta                  = swap_gmi_183(ta)
@@ -123,15 +137,15 @@ if __name__ == "__main__":
     lsm = None    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, lsm, lsm, 
-                figname = "hist2d_gmi_tropics_all.png")
+                figname = "hist2d_gmi_tropics_all_esa.pdf")
  
     # higher latitudes
     
     print ("doing 30-45, all")    
-    latlims  = [0, 65]
+    latlims  = [30, 65]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, lsm, lsm,  
-                figname = "hist2d_gmi_0-65_all.png")
+                figname = "hist2d_gmi_30-45_all_esa.pdf")
 
     
     print ("doing 45-60, all")
@@ -139,7 +153,7 @@ if __name__ == "__main__":
     latlims  = [45, 65]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, lsm, lsm, 
-                figname = "hist2d_gmi_45-60_all.png")
+                figname = "hist2d_gmi_45-60_all_esa.pdf")
 
 
 #%% tropics land    
@@ -173,16 +187,16 @@ if __name__ == "__main__":
     latlims  = [0, 30]    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_tropics_land.png")        
+                figname = "hist2d_gmi_tropics_land_esa.pdf")        
 
     # higher latitudes land
     
     print ("doing high lats, land")
     
-    latlims  = [50, 65]    
+    latlims  = [30, 45]    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_30-45_land.png")
+                figname = "hist2d_gmi_30-45_land_esa.pdf")
     
     print ("doing high lats, land")
 
@@ -193,7 +207,7 @@ if __name__ == "__main__":
   
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_45-65_land.png")
+                figname = "hist2d_gmi_45-65_land_esa.pdf")
 
 
 
@@ -208,7 +222,7 @@ if __name__ == "__main__":
     latlims  = [30, 45]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_30-45_sea.png")
+                figname = "hist2d_gmi_30-45_sea_esa.pdf")
     
  
     print ("doing high lats, sea")
@@ -216,16 +230,16 @@ if __name__ == "__main__":
     latlims  = [45, 65]    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_45-60_sea.png")        
+                figname = "hist2d_gmi_45-65_sea_esa.pdf")        
     
     # tropics sea
     
     print ("doing tropics, sea")
 
-    latlims  = [0, 65]
+    latlims  = [0, 30]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi,  
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_0-65_sea.png")  
+                figname = "hist2d_gmi_tropics_sea_esa.pdf")  
     
     
 #%% higher latitudes sea-ice
@@ -238,7 +252,7 @@ if __name__ == "__main__":
     latlims  = [50, 65]    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_highlat_sea-ice.png") 
+                figname = "hist2d_gmi_highlat_sea-ice_esa.pdf") 
     
 #%%
     print ("highlats, snow")
@@ -248,13 +262,13 @@ if __name__ == "__main__":
     latlims  = [30, 45]
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_30-45_snow.png")           
+                figname = "hist2d_gmi_30-45_snow_esa.pdf")           
     
     print ("highlats, snow")
-    latlims  = [50, 65]    
+    latlims  = [45, 65]    
     call_hist2d(ta, lat, lon, stype, tb_gmi, lat_gmi, lon_gmi, 
                 lsm_gmi, latlims, stype_sim, stype_gmi, 
-                figname = "hist2d_gmi_45-60_snow.png")  
+                figname = "hist2d_gmi_45-60_snow_esa.pdf")  
 
 #%%
 
