@@ -1,0 +1,8 @@
+#DEFINITIONS:  -*-sh-*-
+#
+# Blackbody everywhere
+#
+Arts2{
+  Copy( iy_surface_agenda, iy_surface_agenda__UseSurfaceRtprop )
+  Copy( surface_rtprop_agenda, surface_rtprop_agenda__Blackbody_SurfTFromt_field )
+}

@@ -52,7 +52,11 @@ def to_dataarray_satdata(gmi):
 
     ta.attrs['iwp']   = gmi.iwp.ravel()[mask]
     ta.attrs["rwp"]   = gmi.rwp.ravel()[mask]
+<<<<<<< HEAD
+    ta.attrs["t2m"]   = gmi.t0.ravel()[mask]
+=======
     ta.attrs["t0"]    = gmi.t0.ravel()[mask]
+>>>>>>> cddcf140b2abe352dccdd614b7b5032d63c23bfb
     
     
     lst = gmi.lst.ravel()[mask]

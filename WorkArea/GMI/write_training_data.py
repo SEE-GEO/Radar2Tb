@@ -151,6 +151,7 @@ def divide_test_train(TB, randomList):
         
     return TB_test    
 
+
 #%%
 if __name__ == "__main__":
     
@@ -244,5 +245,4 @@ if __name__ == "__main__":
     ta_test        = to_dataarray(gmi)
     ta_test.to_netcdf('/home/inderpreet/Dendrite/Projects/IWP/GMI/training_data/TB_GMI_test_jan.nc', 'w')
     
-    
-    
+

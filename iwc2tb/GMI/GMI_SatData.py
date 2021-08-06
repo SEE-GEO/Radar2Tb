@@ -114,7 +114,7 @@ class GMI_Sat():
         date    = [datetime(year[i], mon[i], day[i], hour[i], minute[i], sec[i]) for i in range(len(year))]
         
         return np.array(date)
-        
+
     @property
     def lst(self):
         
@@ -311,14 +311,5 @@ class GMI_Sat():
         
         return grid_z
         
-    
-    def plot_scene(self, z = None):        
-        """
-        plots the overpass of DARDAR
 
-        Returns
-        -------
-        None.
-
-        """
-        plot_locations_map(self.lat, self.lon, z)
+        

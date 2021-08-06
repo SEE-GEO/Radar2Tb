@@ -9,6 +9,7 @@ import random
 from keras.utils import to_categorical
 from quantnn.normalizer import Normalizer 
 
+
 class gmiSatData(Dataset):
     """
     Pytorch dataset for the GMI training data for IWP retrievals
@@ -20,6 +21,7 @@ class gmiSatData(Dataset):
                  batch_size = None,
                  latlims = None,
                  normalize = None,                
+
                  log = False):
         """
         Create instance of the dataset from a given file path.
@@ -32,7 +34,10 @@ class gmiSatData(Dataset):
         super().__init__()
         
         self.batch_size = batch_size
+
+
         self.norm   = normalize
+
         self.gmi    = gmi
 
         TB = self.gmi.tb
@@ -54,7 +59,7 @@ class gmiSatData(Dataset):
         self.stype = self.to_encode(stype)
         
         # given all inputs, the chosen variables for
-        #training given as "inputs" on init
+
         all_inputs = [TB, 
                       self.lon[:, :, np.newaxis], 
                       self.lat[:, :, np.newaxis],
@@ -73,6 +78,7 @@ class gmiSatData(Dataset):
         
 
         outputnames = np.array(["iwp", "wvp"])
+
         
         idy         = np.argwhere(outputnames == outputs)[0][0]
         
@@ -104,6 +110,7 @@ class gmiSatData(Dataset):
         self.lst  = self.lst[ilat[:, 0], :]
         self.t2m  = self.t2m[ilat[:, 0], :]
         self.z0   = self.z0[ilat[:, 0], :]
+
         self.stype = self.stype[ilat[:, 0], :]
         
 
@@ -119,19 +126,17 @@ class gmiSatData(Dataset):
         #     self.mean = mean
         # else:
         #     self.mean = np.mean(x, axis = (0, 1))
-        
+
         self.y = np.float32(all_outputs[idy])
         
         self.x = x
-        
-#        self.y = np.where(self.y ==0, 1e-12)
+
 
         nanmask = self.y <= 0
         if log == True:
             self.y[~nanmask] = np.log(self.y[~nanmask])            
             self.y[nanmask]  = np.nan    
-            
-#        self.file.close()
+
 
     def __len__(self):
         """
@@ -154,6 +159,7 @@ class gmiSatData(Dataset):
         Args:
             i: The index of the sample to return
         """
+
 
         if self.batch_size is None:
             return (torch.tensor(self.x[i, :, :]),
@@ -178,21 +184,7 @@ class gmiSatData(Dataset):
             return (torch.tensor(x),
                     torch.tensor(self.y[i_start : i_end, :]))
         
-  
- 
-    # def normalise_std(self, x):
-    #     """
-    #     normalise the input data with mean and standard deviation
-    #     Args:
-    #         x
-    #     Returns :
-    #         x_norm
-    #     """          
 
-    #     x_norm = (x - self.mean)/self.std   
-            
-    #    return x_norm 
-    
     def to_encode(self, stype):
         
         # class 11 is defined to handle np.nan, it is "others" class
@@ -215,6 +207,7 @@ class gmiSatData(Dataset):
         sindex = np.where(self.inputs == inputname)[0][0]
         
         return sindex
+
                 
             
             

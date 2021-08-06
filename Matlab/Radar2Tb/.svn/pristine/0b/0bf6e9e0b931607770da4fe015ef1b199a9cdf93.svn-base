@@ -1,0 +1,25 @@
+% FORMAT run_onion(P,F)
+% 
+% IN    P   Path structure
+%       F   Filter settings structure
+
+% 2020-12-19 Patrick Eriksson
+
+function run_onion(P,F)
+
+
+%- Set control file
+%
+cfile = fullfile( P.wfolder, 'cfile.arts' );
+%
+copyfile( fullfile( P.arts_files, 'onion.arts' ), cfile );
+
+
+%- Special saves
+%
+xmlStore( fullfile( P.wfolder, 'phase_tlim.xml' ), F.phase_tlim, 'Numeric' );
+
+
+%- Run ARTS
+%
+[s,r] = system( sprintf('%s -r000 -o %s %s', P.arts, P.wfolder, cfile ) );

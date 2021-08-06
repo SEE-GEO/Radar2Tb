@@ -1,0 +1,102 @@
+2021-03-05  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* ArtsFiles/onion.arts: Adjustment of settings for
+	particle_bulkpropRadarOnionPeeling.
+
+2021-02-16  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* set_surf_fastem_telsem_snow.m: Smoothing for sea-ice fraction
+	increased from 3 to 5.
+
+2021-01-24  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Changed number of digits in atm1d files.
+
+2021-01-23  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* get_beam_info.m: Added WVP.
+
+	* Now surface_skin_t for water (in ARTS) is not allowed to be <
+	272 K.
+
+2021-01-21  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* ArtsFiles/surface_fastem_telsem_snow.arts: Now uses
+	surface_reflectivityFromGriddedField6 for snow.
+
+	* set_surf_fastem_telsem_snow.m: Now uses
+	snow_reflectivity_model.m and sets up a Gf6.
+
+	* snow_reflectivity_model.m: New.
+
+2021-01-21  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* get_beam_info.m (get_beam_info): B.stype was set incorrectly as
+	had missed to 'nearest'.
+
+	* Some cosmetic changes in the set_surf functions.
+
+2021-01-19  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Now possible to uce IWC and N0star in combination. This is now
+	default for IceCube.
+
+2021-01-17  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Work on the surface part. Started to introduce snow. z_surface
+	now set separately. Surface type mask now always set. Generalised
+	get_iwp and then renamed to get_beam_info.
+
+2021-01-15  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Work on GMI. Introduced the O structure. The WSV particle_masses
+	now used in ARTS, and the atm1d files now much more compact. A
+	small start on handling surface snow.
+
+2021-01-15  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Onion peeling nows seems to work. Fixed bugs around order
+	between ice and rain in scattering data. Made run1icecube more
+	configurable. The calculation options now given as a structure.
+
+	* run1gmi.m: New.
+
+2021-01-13  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* run1icecube.m: Sensor pos now set to z_toa+1km.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Work towards  onion peeling.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* run1icecube.m: New.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* demo_polratio.m: Fixed typo in copy of IWC PSD.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Work towards also having RWC and generalisations in general.
+	Fixed several bugs.
+
+2021-01-08  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Clear-sky set up for IceCube should now be ready.
+
+2021-01-08  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* demo_iwc2tb.m: Updated and polished.
+
+	* Made adoptions as ERA5 vmr_field now includes ozone.
+
+	* Removed picky from FO7t.
+
+	* Introduced F.iwc_tmax.
+
+2020-12-30  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Start of the SVN, just adding files developed during last weeks.
+

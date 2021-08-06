@@ -1,0 +1,153 @@
+% FORMAT set_surf_fastem_telsem(P)
+%
+% IN    P   Path structure
+%
+% This functions make use of
+%     lsm
+%     skt
+%     wind_speed
+%     wind_direction
+%     snow_depth
+%     ice_cover
+% and sets
+%     surface.arts
+%     skin_t_field
+%     surface_wind_speed
+%     surface_wind_direction
+%     surface_type_mask
+%     telsem_folder
+%     telsem_month
+
+% 2020-12-19 Patrick Eriksson
+
+
+function set_surf_fastem_telsem_snow(P)
+
+
+%- Copy include file to use
+%
+copyfile( fullfile( P.arts_files, 'surface_fastem_telsem_snow.arts' ), ...
+          fullfile( P.wfolder, 'surface.arts' ) );
+
+
+%- Recreate original latitude grid 
+%
+lats = xmlLoad( fullfile( P.wfolder, 'lat_true.xml' ) );
+lats = lats(3:end-2);
+%
+% Can be in reversed order and we need to resort all data that go into GF2-s.
+[lats,ind] = sort( lats );
+
+
+%- Skin temperature 
+%
+d    = xmlLoad( fullfile( P.wfolder, 'skt.xml' ) );
+d    = d(ind);
+%
+Gf.name      = 'Surface skin temperature';
+Gf.gridnames = { 'Latitude', 'Longitude' };
+Gf.grids     = { lats, [-180 360] };
+Gf.dataname  = 'Data';
+Gf.data      = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'skin_t_field.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Wind speed
+%
+d = xmlLoad( fullfile( P.wfolder, 'wind_speed.xml' ) );
+d = d(ind);
+Gf.name = 'Wind speed';
+Gf.data = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'surface_wind_speed.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Wind direction
+%
+d = xmlLoad( fullfile( P.wfolder, 'wind_direction.xml' ) );
+d = d(ind);
+Gf.name = 'Wind direction';
+Gf.data = [d d];
+%
+xmlStore( fullfile( P.wfolder, 'surface_wind_direction.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Land-sea mask
+%
+d = xmlLoad( fullfile( P.wfolder, 'lsm.xml' ) );
+d = d(ind);
+
+
+%- Add snow and ice as type 2
+%
+% Treshold for snow_depth set to 2e-3
+% Sea-ice selected randomly, 7 positions at the time to not make it too random
+%
+snow = xmlLoad( fullfile( P.wfolder, 'snow_depth.xml' ) );
+snow = snow(ind);
+icef = xmlLoad( fullfile( P.wfolder, 'sea_ice_cover.xml' ) );
+icef = icef(ind);
+%
+ices = zeros( size(icef) );
+for i = 4 : 7 : length(icef)-3 
+  ii = i-3 : i+3;
+  ices(ii) = rand(1) < mean(icef(ii));
+end
+%
+type2 = (snow > 2e-3) | ices;
+%
+d(type2) = 2;
+
+
+%- Store surface type mask
+%
+Gf.name = 'Surface type';
+Gf.data = [d d];
+xmlStore( fullfile( P.wfolder, 'surface_type_mask.xml' ), Gf, ...
+          'GriddedField2', 'binary' );
+
+
+%- Telsem files
+%
+[~,month] = get_time( P );
+%
+xmlStore( fullfile( P.wfolder, 'telsem_folder.xml' ), P.telsem, 'String' );
+xmlStore( fullfile( P.wfolder, 'telsem_month.xml' ), month, 'Index' );
+
+
+%- Set snow reflectivity
+%
+%  New random value at each 20:th original latitude
+%
+nstokes = 2;
+latp    = lats( unique( [1:20:length(lats), length(lats)] ) ); 
+np      = length( latp );
+%
+[fs,Rv,Rh] = snow_reflectivity_model( np ); 
+%
+Gf.name      = 'Surface snow reflectivity';
+Gf.gridnames = { 'Frequency', 'Stokes element', 'Stokes element', ...
+                 'Incidence angle', 'Latitude', 'Longitude' };
+Gf.grids     = { fs, 1:nstokes, 1:nstokes, [0 90], ...
+                 latp, [-180 360] };
+Gf.dataname  = 'Data';
+Gf.data      = zeros( length(fs), nstokes, nstokes, 2, length(latp), 2 );
+% Set the reflectivity matrices
+for i = 1 : length(latp)
+  for f = 1 : length(fs)
+    Gf.data(f,1,1,:,i,:) = ( Rv(i,f) + Rh(i,f) ) / 2;
+    Gf.data(f,2,2,:,i,:) = Gf.data(f,1,1,:,i,:); 
+    Gf.data(f,1,2,:,i,:) = ( Rv(i,f) - Rh(i,f) ) / 2;
+    Gf.data(f,2,1,:,i,:) = Gf.data(f,1,2,:,i,:); 
+  end
+end
+%
+xmlStore( fullfile( P.wfolder, 'snow_reflectivity.xml' ), Gf, ...
+          'GriddedField6', 'binary' );
+
+
+

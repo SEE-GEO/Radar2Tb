@@ -1,0 +1,36 @@
+#DEFINITIONS:  -*-sh-*-
+#
+# Fastem used everywhere
+#
+Arts2{
+
+  NumericCreate( wspeed )
+  NumericCreate( wdirec )
+    
+  GriddedField2Create( skin_t_field )
+  GriddedField2Create( surface_wind_speed )
+  GriddedField2Create( surface_wind_direction )
+    
+  ReadXML( skin_t_field, "skin_t_field.xml" )
+  ReadXML( surface_wind_speed, "surface_wind_speed.xml" )
+  ReadXML( surface_wind_direction, "surface_wind_direction.xml" )
+
+  VectorCreate( transmittance )
+
+  Copy( iy_surface_agenda, iy_surface_agenda__UseSurfaceRtprop )
+
+  AgendaSet( surface_rtprop_agenda ){
+    InterpGriddedField2ToPosition( out = surface_skin_t, 
+                               gfield2 = skin_t_field )
+    NumericClip( surface_skin_t, surface_skin_t, 272, 310 )
+    InterpGriddedField2ToPosition( out = wspeed, 
+                               gfield2 = surface_wind_speed )
+    InterpGriddedField2ToPosition( out = wdirec, 
+                               gfield2 = surface_wind_direction )
+    nelemGet( nelem, f_grid )
+    VectorSetConstant( transmittance, nelem, 0.8 )
+    surfaceFastem(          wind_speed = wspeed, 
+                        wind_direction = wdirec,
+                         transmittance = transmittance )
+  } 
+}

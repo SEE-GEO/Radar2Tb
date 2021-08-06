@@ -1,0 +1,80 @@
+% FORMAT [iwp,rwp,lat,lon] = get_iwp(P,C)
+%
+% OUT   iwp    Ice water path
+%       rwp    Rain water path
+%       lat    Latitude, at surface
+%       lon    Longitude, at surface
+% IN    P      Path structure
+%       C      Calculation settings structure
+
+% 2020-12-19 Patrick Eriksson
+
+
+function [iwp,rwp,lat,lon] = get_iwp(P,C)
+
+if C.do_csky
+  error( 'IWP not produced by an all-sky calculation.' );
+end
+
+% Set up output arguments
+%
+pos  = xmlLoad( fullfile(P.wfolder,'sensor_pos.xml') ); 
+npos = size( pos, 1 );
+iwp  = zeros( npos, 1 );
+rwp  = zeros( npos, 1 );
+lat  = zeros( npos, 1 );
+lon  = zeros( npos, 1 );
+
+
+% Import meta data
+%
+M = xmlLoad( fullfile(P.wfolder,'scat_meta.xml') );
+
+
+% Particle masses
+%
+nice = length(M{1});
+mice = zeros( 1, nice );
+for i = 1 : nice
+  mice(i) = M{1}{i}.mass;
+end
+%
+nliq = 0;
+if length(M) > 1
+  % Code for RWC in place, but please check before using 
+  error('This function not yet tested for RWC.');
+  nliq = length(M{2});
+  mliq = zeros( 1, nliq );
+  for i = 1 : nliq
+    mliq(i) = M{2}{i}.mass;
+  end
+end
+
+
+% Process ATM-1D data
+%
+for i = 1 : npos
+  A = xmlLoad( fullfile(P.wfolder,sprintf('atm1d.%03d001000.xml',i)) );
+  lat(i) = A.grids{3};
+  lon(i) = A.grids{4};
+  %
+  Mbinice = zeros( nice, size(A.data,2) ); 
+  Mbinliq = zeros( nliq, size(A.data,2) ); 
+  %
+  for f = 1 : length(A.grids{1})
+    if strncmp( A.grids{1}{f}, 'Scattering element', 18 )
+      s = 1 + str2num( A.grids{1}{f}(19:end) );
+      if s <= nice
+        Mbinice(s,:) = A.data(f,:) * mice(s);
+      else
+        Mbinliq(s,:) = A.data(f,:) * mliq(s-nice);
+      end
+    end
+  end
+  %
+  iwp(i) = trapz( A.data(1,:), sum(Mbinice) );
+  %
+  if nliq
+    rwp(i) = trapz( A.data(1,:), sum(Mbinliq) );
+  end
+end

@@ -197,6 +197,7 @@ class gmiData(Dataset):
         #    self.lat = self.lat[indices]
         #    #self.lst = self.lst[indices]
         if (i == 0):
+
             #indices = np.random.permutation(self.x.shape[0])
             self.x   = self.x[:, :]
             self.y   = self.y[:]
@@ -211,6 +212,7 @@ class gmiData(Dataset):
             
             y = torch.tensor(self.y[i])
             x = torch.tensor(self.x[i, :])
+
             
             #if self.transform is not None:
             #y = self.transform1(y)

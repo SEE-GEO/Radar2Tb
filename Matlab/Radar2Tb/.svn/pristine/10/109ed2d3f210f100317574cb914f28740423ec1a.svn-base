@@ -1,0 +1,31 @@
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* run1icecube.m: New.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* demo_polratio.m: Fixed typo in copy of IWC PSD.
+
+2021-01-11  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Work towards also having RWC and generalisations in general.
+	Fixed several bugs.
+
+2021-01-08  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Clear-sky set up for IceCube should now be ready.
+
+2021-01-08  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* demo_iwc2tb.m: Updated and polished.
+
+	* Made adoptions as ERA5 vmr_field now includes ozone.
+
+	* Removed picky from FO7t.
+
+	* Introduced F.iwc_tmax.
+
+2020-12-30  Patrick Eriksson  <patrick.eriksson@chalmers.se>
+
+	* Start of the SVN, just adding files developed during last weeks.
+

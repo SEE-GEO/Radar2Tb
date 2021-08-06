@@ -1,0 +1,145 @@
+% RUN1GMI   GMI simulations over one orbit part
+%
+% The fields of *P* are:
+%   P.outfolder   Folder where to save results
+%   P.era5_zip    Full path to input zip file
+%   P.wfolder     Work folder. If empty, a temporary folder is created.
+%   P.arts        Full path to ARTS executable.
+%   P.arts_files  Full path to input files coming with Radar2Tb
+%   P.std_habits  Full path to folder with standard habits files.
+%   P.telsem      Full path to folder with TELSEM and TESSEM input files.
+%
+% The fields of *O* are (none is mandatory):
+%   icehabit     Name of ice habit. Default is 'LargePlateAggregate'
+%   icepsd       Name of PSD file to use for ice. Default is 'psd_dardar1mom.arts'.
+%   icesize      What type of size the PSD uses (e.g. 'dmax'). Default is 'dveq'. 
+%   rainpsd      Name of PSD file to use for rain. Default is 'psd_mp48.arts'.
+%   lsampling    Sampling distance, along the orbit. Default is 2 km.
+%   pratio_csat  Polarisation ratio to apply for CloudSat (set to have H-pol).
+%                Default is 1.4.
+%   pratio_csat  Polarisation ratio to apply for GMI. Default is 1.4.
+%   phase_tlim   Temperature setting limit between ice and rain. Default
+%                is 273.15K.
+%
+% FORMAT run1gmi(P[,O])
+%
+% IN   P   See above
+% OPT  O   Calculation options structure. Default is [].
+
+% 2021-01-11   Patrick Eriksson
+
+function run1gmi(P,O)
+%
+if nargin < 2, O = []; end
+%
+if ~isfield(O,'icehabit'),    O.icehabit = 'LargePlateAggregate'; end
+if ~isfield(O,'icepsd'),      O.icepsd = 'psd_dardar1mom.arts';   end
+if ~isfield(O,'icesize'),     O.icesize = 'dveq';                 end
+if ~isfield(O,'rainpsd'),     O.rainpsd = 'psd_mp48.arts';        end
+if ~isfield(O,'lsampling'),   O.lsampling = 2e3;                  end
+if ~isfield(O,'pratio_csat'), O.pratio_csat = 1.4;                end
+if ~isfield(O,'pratio_gmi'),  O.pratio_gmi = 1.4;                 end
+if ~isfield(O,'phase_tlim'),  O.phase_tlim = 273.15;              end
+
+
+%- Create name of output file
+%
+[~,casename] = fileparts( P.era5_zip );
+outfile = fullfile( P.outfolder, [casename,'.mat'] );
+
+
+%- Check input
+%
+if exist( outfile, 'file' )
+  fprintf( 'Output file already exists (%s).\n', casename );
+  return
+end
+if ~exist( P.era5_zip, 'file' )
+  fprintf( 'Did not find\n%s\n', P.era5_zip );
+  return
+end
+%
+fprintf( 'Doing %s ...', casename );
+
+
+%- Workfolder
+%
+if isempty( P.wfolder )
+  P.wfolder = create_tmpfolder;
+  cu = onCleanup( @()delete_tmpfolder( P.wfolder ) );
+end
+
+
+%- Hard-coded settings
+%
+F.z_toa      = 25e3;
+F.lwc_min    = 1e-8;
+F.lwc_tmin   = 273-25;
+F.phase_tlim = O.phase_tlim;
+%
+C.do_csky    = false;
+C.arts_time  = false;
+
+
+%- Common stuff
+%
+adopt_era5_csky( P, F );
+copyfile( fullfile(P.arts_files,O.rainpsd), ...
+          fullfile(P.wfolder,'psd_rwc.arts') );
+copyfile( fullfile(P.arts_files,O.icepsd), ...
+          fullfile(P.wfolder,'psd_iwc.arts') );
+
+
+%- Onion peeling part
+%
+set_z_surface( P );
+adopt_reflectivities( P ,F );
+%
+C = set_cloudsat( P, C );
+set_habit( P, C, O.icehabit, 'LiquidSphere', O.icesize, O.pratio_csat );
+%
+run_onion( P, F );
+
+
+%- Init GMI
+%
+C.pol_mode   = 'V';  
+incang = set_gmi( P, C );
+set_poslos( P, F.z_toa+1e3, incang, O.lsampling, true );
+set_rt4( P, 12 );
+
+
+%- GMI, V channels
+%
+set_surf_fastem_telsem_snow( P, C );
+set_habit( P, C, O.icehabit, 'LiquidSphere', O.icesize, O.pratio_gmi );
+run_arts( P, C );
+TbV = get_tb_gmi( P, C );
+
+
+%- GMI, H channels 
+%
+C.pol_mode   = 'H';
+set_gmi( P, C );
+set_surf_fastem_telsem_snow( P, C );
+set_habit( P, C, O.icehabit, 'LiquidSphere', O.icesize, O.pratio_gmi );
+run_arts( P, C );
+TbH = get_tb_gmi( P, C );
+
+
+%- Combine V and H
+%
+Tb      = TbV;
+Tb(:,2) = TbH(:,2);
+
+
+%- Get information for each pencil beam
+%
+B = get_beam_info( P, C);
+
+
+%- Save to outfile
+%
+save( outfile, 'Tb', 'O', 'B' );
+%
+fprintf( '\rDone: %s      \n', casename );

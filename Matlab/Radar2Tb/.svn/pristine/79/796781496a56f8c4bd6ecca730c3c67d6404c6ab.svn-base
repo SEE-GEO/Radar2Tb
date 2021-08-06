@@ -1,0 +1,31 @@
+% FORMAT [fs,Rv,Rh] = snow_reflectivity_model(n)
+%
+% IN   n    Number of value combinations to generate
+% OUT  fs   Frequency points of the model
+%      Rv   Vertical reflectivites, one column per frequency
+%      Rh   Horisontal reflectivites, one column per frequency
+%
+% So far only 159 to 193 GHz covered.
+
+% 2021-01-21   Patrick Eriksson and Inderpreet Kaur
+
+
+function [fs,Rv,Rh] = snow_reflectivity_model(n)
+
+fs = [159e9 193e9];
+
+% The model 
+e193 = min( 0.78+0.07*randn(n,1) , 1 );     % Average emissivity at 193GHz
+e159 = min( e193-0.02+0.02*randn(n,1), 1 ); % Average emissivity at 159GHz
+d159 = 0.005 + 0.05*rand(n,1);              % Diff between H and V 159GHz reflectivity
+d193 = d159 - 0.01 + 0.015*rand(n,1);       % Diff between H and V 193GHz reflectivity
+  
+% Reflectivy values (>=0)
+r159v = max( 0, (1-e159) - d159/2 );
+r159h = max( 0, (1-e159) + d159/2 );
+r193v = max( 0, (1-e193) - d193/2 );
+r193h = max( 0, (1-e193) + d193/2 );
+
+% Combine
+Rv = [r159v r193v];
+Rh = [r159h r193h];

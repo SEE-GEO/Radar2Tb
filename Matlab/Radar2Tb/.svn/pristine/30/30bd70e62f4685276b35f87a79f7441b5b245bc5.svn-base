@@ -1,0 +1,108 @@
+#DEFINITIONS:  -*-sh-*-
+#
+#   Performas an all-sky calculation
+#
+# 2020-12-18 Patrick Eriksson
+Arts2{
+
+  INCLUDE "general/general.arts"
+  INCLUDE "general/agendas.arts"
+  INCLUDE "general/planet_earth.arts"
+
+  # Read files derived from ERA5
+  ReadXML( p_grid, "p_grid.xml" )
+  ReadXML( lat_grid, "lat_grid.xml" )
+  ReadXML( lat_true, "lat_true.xml" )
+  ReadXML( lon_true, "lon_true.xml" )
+  ReadXML( z_field, "z_field.xml" )
+  ReadXML( t_field, "t_field.xml" )
+  ReadXML( vmr_field, "vmr_field.xml" )
+  ReadXML( z_surface, "z_surface.xml" )
+
+  # Some basic settings  
+  AtmosphereSet2D
+  jacobianOff
+  ReadXML( f_grid, "f_grid.xml" )
+  ReadXML( stokes_dim, "stokes_dim.xml" )
+  ReadXML( iy_unit, "iy_unit.xml" )
+
+  # Species and absorption
+  INCLUDE "absorption.arts"
+    
+  # Check atmospheric fields
+  atmfields_checkedCalc( bad_partition_functions_ok = 1 )
+  atmgeom_checkedCalc
+
+  # Surface RT properties
+  INCLUDE "surface.arts"
+
+  # RT variables
+  Copy( ppath_agenda, ppath_agenda__FollowSensorLosPath )
+  Copy( ppath_step_agenda, ppath_step_agenda__GeometricPath )
+  Copy( iy_space_agenda, iy_space_agenda__CosmicBackground )
+  #
+  Copy( iy_cloudbox_agenda, iy_cloudbox_agenda__QuarticInterpField )
+  AgendaSet( iy_main_agenda ){
+    iyIndependentBeamApproximation( return_atm1d = 1,
+                                    skip_vmr = 0,
+                                    skip_pnd = 1,
+                                    return_masses = 1 )
+    WriteXMLIndexed( "ascii", iy_id, atm_fields_compact, "atm1d", 10 ) 
+  }
+  IndexCreate( rt4_nstreams )
+  ReadXML( rt4_nstreams, "rt4_nstreams.xml" )  
+  IndexCreate( rt4_naa )
+  ReadXML( rt4_naa, "rt4_naa.xml" )  
+  StringCreate( rt4_quad )
+  ReadXML( rt4_quad, "rt4_quad.xml" )  
+  StringCreate( rt4_pfct )
+  ReadXML( rt4_pfct, "rt4_pfct.xml" )
+  AgendaSet( iy_independent_beam_approx_agenda ){
+    Ignore( lat_grid )
+    Ignore( lon_grid )
+    Ignore( lat_true )
+    Ignore( lon_true )
+    Ignore( z_surface )
+    #
+    RT4Calc(   nstreams = rt4_nstreams,
+          max_delta_tau = 1e-3,
+                 robust = 1,
+      auto_inc_nstreams = 32,
+      pfct_aa_grid_size = rt4_naa,
+              quad_type = rt4_quad,
+            pfct_method = rt4_pfct, 
+        za_interp_order = 2 )
+    ppathCalc
+    iyEmissionStandard
+  }
+  
+  # Sensor variables
+  ReadXML( sensor_pos, "sensor_pos.xml" )
+  ReadXML( sensor_los, "sensor_los.xml" )
+  sensorOff
+  sensor_checkedCalc
+
+  # Import basic hydrometeor data
+  ReadXML( scat_data_raw, "scat_data_raw.xml" )
+  ReadXML( scat_meta, "scat_meta.xml" )
+  ReadXML( particle_bulkprop_field, "particle_bulkprop_field.xml" )
+  ReadXML( particle_bulkprop_names, "particle_bulkprop_names.xml" )
+  particle_massesFromMetaData
+  
+  # PSDs
+  NumericCreate( phase_tlim )
+  ReadXML( phase_tlim, "phase_tlim.xml" )
+  INCLUDE "psd_rwc.arts"
+  INCLUDE "psd_iwc.arts"
+  
+  # Set pnd_field and run check
+  cloudboxSetFullAtm
+  scat_dataCalc
+  scat_data_checkedCalc
+  pnd_fieldCalcFromParticleBulkProps
+  cloudbox_checkedCalc
+  
+  # Calculate and save
+  yCalc
+  WriteXML( "binary", y, "y.xml" )
+}

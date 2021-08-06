@@ -1,0 +1,50 @@
+% FORMAT adopt_dardar_iwc(P,F)
+% 
+% IN    P      Path structure
+%       F      Filter settings structure
+%
+% This functions make use of
+%     iwc.xml 
+% and sets
+%     particle_bulkprop_names
+%     particle_bulkprop_field
+%     cloudbox_limits
+%
+% All IWC below F.iwc_min are set to zero
+% Note that F.phase_tlim is applied by t_max GIN of PSDs
+
+% 2020-12-18 Patrick Eriksson
+
+
+function adopt_dardar_iwc(P,F)
+
+%- Load p_grid as basis for altitude cropping
+%
+p_grid = xmlLoad( fullfile( P.wfolder, 'p_grid.xml' ) );
+
+
+% particle_bulkprop_field shall be expanded with zeros
+%
+T = xmlLoad( fullfile( P.wfolder, 'iwc.xml' ) );
+%
+T = T(1,1:length(p_grid),:,:);
+%
+T2 = zeros( size(T) + [0 0 4] );
+T2(1,:,3:end-2) = T;
+
+
+% Filter IWC
+%
+T2(T2<F.iwc_min) = 0;
+%
+xmlStore( fullfile( P.wfolder, 'phase_tlim.xml' ), F.phase_tlim, 'Numeric' );
+
+
+
+% Store
+%
+xmlStore( fullfile( P.wfolder, 'particle_bulkprop_field.xml' ), T2, ...
+          'Tensor4', 'binary' );
+%
+xmlStore( fullfile( P.wfolder, 'particle_bulkprop_names.xml' ), {'IWC'}, ...
+          'ArrayOfString');

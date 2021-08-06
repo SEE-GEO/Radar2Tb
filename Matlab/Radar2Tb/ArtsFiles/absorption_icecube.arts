@@ -1,0 +1,19 @@
+Arts2{
+  INCLUDE "general/continua.arts"
+  abs_speciesSet( species=[ "N2-CIAfunCKDMT252, N2-CIArotCKDMT252",
+                            "O2",
+                            "H2O,H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252",
+                            "O3",
+                            "liquidcloud-ELL07" ] )
+  Copy(abs_xsec_agenda, abs_xsec_agenda__noCIA)
+  Copy( propmat_clearsky_agenda, propmat_clearsky_agenda__OnTheFly )
+  ReadHITRAN( abs_lines = abs_lines,
+              filename = "lines_icecube.hi",
+              normalization_option = "VVW",
+              mirroring_option = "None",
+              lineshapetype_option = "LP" )
+  abs_lines_per_speciesCreateFromLines 
+  abs_xsec_agenda_checkedCalc
+  lbl_checkedCalc
+  propmat_clearsky_agenda_checkedCalc
+}

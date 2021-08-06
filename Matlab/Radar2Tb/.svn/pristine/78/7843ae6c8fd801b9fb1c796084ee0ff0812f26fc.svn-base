@@ -1,0 +1,59 @@
+#DEFINITIONS:  -*-sh-*-
+#
+#   Performas a clear-sky calculation
+#
+# 2020-12-18 Patrick Eriksson
+Arts2{
+
+  INCLUDE "general/general.arts"
+  INCLUDE "general/agendas.arts"
+  INCLUDE "general/planet_earth.arts"
+  INCLUDE "continua.arts"
+
+  # Read files derived from ERA5
+  ReadXML( p_grid, "p_grid.xml" )
+  ReadXML( lat_grid, "lat_grid.xml" )
+  ReadXML( lat_true, "lat_true.xml" )
+  ReadXML( lon_true, "lon_true.xml" )
+  ReadXML( z_field, "z_field.xml" )
+  ReadXML( t_field, "t_field.xml" )
+  ReadXML( vmr_field, "vmr_field.xml" )
+  ReadXML( z_surface, "z_surface.xml" )
+
+  # Some basic settings  
+  AtmosphereSet2D
+  jacobianOff
+  cloudboxOff
+  ReadXML( f_grid, "f_grid.xml" )
+  ReadXML( stokes_dim, "stokes_dim.xml" )
+  ReadXML( iy_unit, "iy_unit.xml" )
+
+  # Species and absorption
+  INCLUDE "absorption.arts"
+  
+  # Check atmospheric fields
+  atmfields_checkedCalc( bad_partition_functions_ok = 1 )
+  atmgeom_checkedCalc
+  cloudbox_checkedCalc
+
+  # Surface RT properties
+  INCLUDE "surface.arts"
+
+  # RT variables
+  Copy( ppath_agenda, ppath_agenda__FollowSensorLosPath )
+  Copy( ppath_step_agenda, ppath_step_agenda__GeometricPath )
+  Copy( iy_main_agenda, iy_main_agenda__Emission )
+  Copy( iy_space_agenda, iy_space_agenda__CosmicBackground )
+  AgendaSet( geo_pos_agenda ){ geo_posEndOfPpath }
+  
+  # Sensor variables
+  ReadXML( sensor_pos, "sensor_pos.xml" )
+  ReadXML( sensor_los, "sensor_los.xml" )
+  sensorOff
+  sensor_checkedCalc
+    
+  # Calculate and save
+  yCalc
+  WriteXML( "binary", y, "y.xml" )
+  WriteXML( "binary", y_geo, "y_geo.xml" )
+}
