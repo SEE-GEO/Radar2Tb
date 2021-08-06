@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May 26 11:06:50 2021
-
-@author: inderpreet
-"""
-
-
 import numpy as np
 import netCDF4
 import torch
@@ -30,7 +21,6 @@ class gmiData(Dataset):
                  latlims = None,
                  normalise = None, 
                  transform = None):
-
         """
         Create instance of the dataset from a given file path.
 
@@ -41,15 +31,16 @@ class gmiData(Dataset):
         """
         super().__init__()
         
-        #self.log_iwp = log_iwp
         self.batch_size = batch_size
-        self.transform  = transform
+
         self.file = netCDF4.Dataset(path, mode = "r")
 
         ta = self.file.variables["ta"]
         TB = ta[:]
-
-
+        
+        TB[:, 0] = ta[:, 0]
+        TB[:, 1] = ta[:, 2]
+        TB[:, 2] = ta[:, 3]
 
         self.lon   = ta.lon.reshape(-1, 1)
         self.lat   = ta.lat.reshape(-1, 1)
@@ -68,7 +59,7 @@ class gmiData(Dataset):
         
         # given all inputs, the chosen variables for
         #training given as "inputs" on init
-        all_inputs = [TB, 
+        all_inputs = [TB[:, :3], 
                       self.t0, 
                       self.lon, 
                       self.lat,
@@ -133,7 +124,7 @@ class gmiData(Dataset):
         all_outputs = [self.iwp, self.wvp]    
             
         tindex = self.get_indices("ta")
-        self.chindex = np.arange(tindex, tindex + 4, 1)
+        self.chindex = np.arange(tindex, tindex + 3, 1)
         
         
         if normalise is None:
@@ -207,9 +198,9 @@ class gmiData(Dataset):
             x = torch.tensor(self.x[i, :])
             x = self.x[i, :].reshape(1, -1)
             # add new noise to TB in each epoch
-            x_noise = np.float32(self.add_noise(x[:, :4], self.chindex))
+            x_noise = np.float32(self.add_noise(x[:, :3], self.chindex))
             
-            x[:, :4]      = x_noise
+            x[:, :3]      = x_noise
             
             # normalise 
             x_norm       = np.squeeze(np.float32(self.norm(x)))    
@@ -227,9 +218,9 @@ class gmiData(Dataset):
             x       = self.x[i_start : i_end, :].copy()
             
             # add new noise to TB in each epoch
-            x_noise = np.float32(self.add_noise(x[:, :4], self.chindex))
+            x_noise = np.float32(self.add_noise(x[:, :3], self.chindex))
             
-            x[:, :4]      = x_noise
+            x[:, :3]      = x_noise
             
             # normalise 
             x_norm       = np.float32(self.norm(x))      
@@ -261,8 +252,7 @@ class gmiData(Dataset):
             
         """
         
-        nedt  = np.array([0.70, # 166 V
-                          0.65, # 166 H
+        nedt  = np.array([0.70, # 166 V + H
                           0.47, # 183+-7
                           0.56  # 183+-3                     
                           ])
@@ -349,6 +339,3 @@ class gmiData(Dataset):
         y    = logy(y)
         
         return y
-
-            
-
